@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Desc",
   "dependencies": {
     "bybit-api": "^3.10.25",
     "express": "^4.21.2",
