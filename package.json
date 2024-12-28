@@ -17,6 +17,6 @@
     "mtproto-storage-fs": "^0.3.1"
   },
   "engines": {
-    "node": "14.x"
+    "node": "21.x"
   }
 }
