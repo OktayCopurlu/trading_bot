@@ -14,8 +14,9 @@
     "bybit-api": "^3.10.25",
     "express": "^4.21.2",
     "input": "^1.0.1",
-    "mtproto-storage-fs": "^0.3.1",
-    "node-telegram-bot-api": "^0.63.0",
-    "telegram": "^2.26.6"
+    "mtproto-storage-fs": "^0.3.1"
+  },
+  "engines": {
+    "node": "14.x"
   }
 }
