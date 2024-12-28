@@ -252,7 +252,12 @@ async function placeOrder(signal) {
       throw new Error("No open position for the specified symbol.");
     }
   } catch (error) {
-    return `An error occurred while placing the order: ${error}`;
+    // An error occurred while placing the order: [object Object]
+    // how can I get the error if error is an object?
+
+    return `An error occurred while placing the order: ${JSON.stringify(
+      error
+    )}`;
   }
 }
 
