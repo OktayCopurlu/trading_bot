@@ -4,8 +4,9 @@ const express = require("express");
 const fixedUSDTAmount = 10; // Total margin size in USDT
 const targetLeverage = 25; // Target leverage
 // Bybit API information
-const BYBIT_API_KEY = "jyc9UHox5e0YIDijdK";
-const BYBIT_API_SECRET = "buNQyObMuC3NpVdVGZydi2CKOnu3DHucZq4W";
+const BYBIT_API_KEY = process.env.BYBIT_API_KEY || "jyc9UHox5e0YIDijdK";
+const BYBIT_API_SECRET =
+  process.env.BYBIT_API_SECRET || "buNQyObMuC3NpVdVGZydi2CKOnu3DHucZq4W";
 const useTestnet = false;
 
 // Bybit client
@@ -264,7 +265,7 @@ app.post("/webhook", (req, res) => {
 });
 
 // Start the server
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Webhook server running on http://localhost:${PORT}`);
 });
