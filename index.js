@@ -65,8 +65,9 @@ async function placeOrder(signal) {
       !marketPriceData.result.list ||
       marketPriceData.result.list.length === 0
     ) {
-      console.error(`Could not fetch price for symbol: ${signal.symbol}`);
-      return;
+      return console.error(
+        `Could not fetch price for symbol: ${signal.symbol}`
+      );
     }
 
     const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
@@ -77,8 +78,7 @@ async function placeOrder(signal) {
 
     const instrument = instrumentDetails.result.list[0];
     if (!instrument) {
-      console.error(`Symbol not found: ${signal.symbol}`);
-      return;
+      return console.error(`Symbol not found: ${signal.symbol}`);
     }
 
     const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
@@ -133,8 +133,9 @@ async function placeOrder(signal) {
           });
 
           if (orderResponse.retCode !== 0) {
-            console.error(`Failed to close position: ${orderResponse.retMsg}`);
-            return;
+            return console.error(
+              `Failed to close position: ${orderResponse.retMsg}`
+            );
           }
           console.log(`Position closed for ${signal.symbol}`);
 
@@ -165,10 +166,9 @@ async function placeOrder(signal) {
           console.log(`No conditional orders to cancel for ${signal.symbol}`);
         }
       } else {
-        console.log(
+        return console.log(
           `Open ${currentSide} position already exists for ${signal.symbol}`
         );
-        return;
       }
     }
     console.log("signal.action", signal.action);
@@ -227,28 +227,30 @@ async function placeOrder(signal) {
       });
 
       if (takeProfitResponse.retCode !== 0) {
-        console.error(`Take profit rejected: ${takeProfitResponse.retMsg}`);
+        return console.error(
+          `Take profit rejected: ${takeProfitResponse.retMsg}`
+        );
       } else {
-        console.log(
+        return console.log(
           `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`
         );
       }
     } else {
-      console.log("No open position for the specified symbol.");
+      return console.log("No open position for the specified symbol.");
     }
   } catch (error) {
-    console.error("An error occurred while placing the order:", error);
+    return console.error("An error occurred while placing the order:", error);
   }
 }
 
 // Webhook endpoint
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
   const signal = parseSignal(req.body);
   console.log("Received signal:", signal);
 
   if (signal) {
-    placeOrder(signal);
-    res.status(200).send("Order placed successfully.");
+    const response = await placeOrder(signal);
+    res.status(200).send(response);
   } else {
     res.status(400).send("Invalid signal received.");
   }
