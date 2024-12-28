@@ -236,16 +236,6 @@ async function placeOrder(signal) {
     } else {
       console.log("No open position for the specified symbol.");
     }
-
-    // Şartlı (Conditional) Emir Gönder
-    // const takeProfitResponse = await bybitClient.submitOrder({
-    //   category: "linear",
-    //   symbol: signal.symbol,
-    //   side: side === "Buy" ? "Sell" : "Buy",
-    //   orderType: "Limit",
-    //   qty: takeProfitQuantity,
-    //   price: takeProfitPrice,
-    // });
   } catch (error) {
     console.error("An error occurred while placing the order:", error);
   }
@@ -262,6 +252,11 @@ app.post("/webhook", (req, res) => {
   } else {
     res.status(400).send("Invalid signal received.");
   }
+});
+
+// / endpoint
+app.get("/", (req, res) => {
+  res.status(200).send("Get worked successfully.");
 });
 
 // Start the server
