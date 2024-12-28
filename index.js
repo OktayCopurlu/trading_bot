@@ -51,196 +51,202 @@ function parseSignal(jsonSignal) {
 
 // Function to place orders on Bybit
 async function placeOrder(signal) {
-  // try {
-  const side = signal.signal;
+  try {
+    const side = signal.signal;
 
-  console.log(`Fetching price for symbol: ${signal.symbol}`);
-  const marketPriceData = await bybitClient.getTickers({
-    category: "linear",
-    symbol: signal.symbol,
-  });
+    console.log(`Fetching price for symbol: ${signal.symbol}`);
+    const marketPriceData = await bybitClient.getTickers({
+      category: "linear",
+      symbol: signal.symbol,
+    });
 
-  if (marketPriceData.retCode !== 0) {
-    return `Failed to get tickers : ${marketPriceData.retMsg}`;
-  }
+    if (marketPriceData.retCode !== 0) {
+      return `Failed to get tickers : ${marketPriceData.retMsg}`;
+    }
 
-  if (
-    !marketPriceData.result ||
-    !marketPriceData.result.list ||
-    marketPriceData.result.list.length === 0
-  ) {
-    return `Could not fetch price for symbol: ${signal.symbol}`;
-  }
+    if (
+      !marketPriceData.result ||
+      !marketPriceData.result.list ||
+      marketPriceData.result.list.length === 0
+    ) {
+      return `Could not fetch price for symbol: ${signal.symbol}`;
+    }
 
-  const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
-  const instrumentDetails = await bybitClient.getInstrumentsInfo({
-    category: "linear",
-    symbol: signal.symbol,
-  });
+    const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
+    const instrumentDetails = await bybitClient.getInstrumentsInfo({
+      category: "linear",
+      symbol: signal.symbol,
+    });
 
-  if (instrumentDetails.retCode !== 0) {
-    return `Failed to getInstrumentsInfo : ${instrumentDetails.retMsg}`;
-  }
+    if (instrumentDetails.retCode !== 0) {
+      return `Failed to getInstrumentsInfo : ${instrumentDetails.retMsg}`;
+    }
 
-  const instrument = instrumentDetails.result.list[0];
-  if (!instrument) {
-    return `Symbol not found: ${signal.symbol}`;
-  }
+    const instrument = instrumentDetails.result.list[0];
+    if (!instrument) {
+      return `Symbol not found: ${signal.symbol}`;
+    }
 
-  const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
-  const qtyPrecision = parseInt(
-    instrument.lotSizeFilter.qtyStep.split(".")[1]?.length || 0
-  );
-  const tickSize = parseFloat(instrument.priceFilter.tickSize);
+    const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
+    const qtyPrecision = parseInt(
+      instrument.lotSizeFilter.qtyStep.split(".")[1]?.length || 0
+    );
+    const tickSize = parseFloat(instrument.priceFilter.tickSize);
 
-  // Calculate the correct quantity for the target leverage
-  const targetNotional = fixedUSDTAmount * targetLeverage; // $5 * 25x = $125
-  let calculatedQuantity = (targetNotional / symbolPrice).toFixed(qtyPrecision);
+    // Calculate the correct quantity for the target leverage
+    const targetNotional = fixedUSDTAmount * targetLeverage; // $5 * 25x = $125
+    let calculatedQuantity = (targetNotional / symbolPrice).toFixed(
+      qtyPrecision
+    );
 
-  // Ensure quantity meets minimum order size
-  calculatedQuantity = Math.max(calculatedQuantity, minQty).toFixed(
-    qtyPrecision
-  );
+    // Ensure quantity meets minimum order size
+    calculatedQuantity = Math.max(calculatedQuantity, minQty).toFixed(
+      qtyPrecision
+    );
 
-  // Calculate limit price
-  const priceOffset = tickSize * 5; // Adjust offset as needed
+    // Calculate limit price
+    const priceOffset = tickSize * 5; // Adjust offset as needed
 
-  const limitPrice =
-    side === "Buy"
-      ? (symbolPrice - priceOffset).toFixed(4)
-      : (symbolPrice + priceOffset).toFixed(4);
+    const limitPrice =
+      side === "Buy"
+        ? (symbolPrice - priceOffset).toFixed(4)
+        : (symbolPrice + priceOffset).toFixed(4);
 
-  // Check if there is an open position for the same symbol
-  const openPositions = await bybitClient.getPositionInfo({
-    category: "linear",
-    symbol: signal.symbol,
-  });
+    // Check if there is an open position for the same symbol
+    const openPositions = await bybitClient.getPositionInfo({
+      category: "linear",
+      symbol: signal.symbol,
+    });
 
-  if (openPositions.result) {
-    const openPosition = openPositions.result.list[0];
-    const currentSide = openPosition.side;
+    if (openPositions.result) {
+      const openPosition = openPositions.result.list[0];
+      const currentSide = openPosition.side;
 
-    // If the current signal is the opposite of the open position, close the open position first
-    if (currentSide !== side) {
-      console.log(`Closing open ${currentSide} position for ${signal.symbol}`);
+      // If the current signal is the opposite of the open position, close the open position first
+      if (currentSide !== side) {
+        console.log(
+          `Closing open ${currentSide} position for ${signal.symbol}`
+        );
 
-      if (currentSide !== "") {
-        const orderResponse = await bybitClient.submitOrder({
-          category: "linear",
-          symbol: signal.symbol,
-          side: currentSide === "Buy" ? "Sell" : "Buy",
-          orderType: "Market",
-          qty: openPosition.size,
-          timeInForce: "GoodTillCancel",
-        });
+        if (currentSide !== "") {
+          const orderResponse = await bybitClient.submitOrder({
+            category: "linear",
+            symbol: signal.symbol,
+            side: currentSide === "Buy" ? "Sell" : "Buy",
+            orderType: "Market",
+            qty: openPosition.size,
+            timeInForce: "GoodTillCancel",
+          });
 
-        if (orderResponse.retCode !== 0) {
-          return `Failed to close position: ${orderResponse.retMsg}`;
-        }
-        console.log(`Position closed for ${signal.symbol}`);
+          if (orderResponse.retCode !== 0) {
+            return `Failed to close position: ${orderResponse.retMsg}`;
+          }
+          console.log(`Position closed for ${signal.symbol}`);
 
-        // 2. Şartlı emirleri iptal et
-        console.log(`Fetching conditional orders for ${signal.symbol}`);
-        const activeOrders = await bybitClient.getActiveOrders({
-          category: "linear",
-          symbol: signal.symbol,
-        });
+          // 2. Şartlı emirleri iptal et
+          console.log(`Fetching conditional orders for ${signal.symbol}`);
+          const activeOrders = await bybitClient.getActiveOrders({
+            category: "linear",
+            symbol: signal.symbol,
+          });
 
-        if (
-          activeOrders.result &&
-          activeOrders.result.list &&
-          activeOrders.result.list.length > 0
-        ) {
-          for (const order of activeOrders.result.list) {
-            console.log(`Canceling conditional order: ${order.orderId}`);
-            const cancelOrder = await bybitClient.cancelOrder({
-              category: "linear",
-              symbol: signal.symbol,
-              orderId: order.orderId,
-            });
+          if (
+            activeOrders.result &&
+            activeOrders.result.list &&
+            activeOrders.result.list.length > 0
+          ) {
+            for (const order of activeOrders.result.list) {
+              console.log(`Canceling conditional order: ${order.orderId}`);
+              const cancelOrder = await bybitClient.cancelOrder({
+                category: "linear",
+                symbol: signal.symbol,
+                orderId: order.orderId,
+              });
 
-            if (instrumentDetails.retCode !== 0) {
-              return `Failed to cancelOrder : ${cancelOrder.retMsg}`;
+              if (instrumentDetails.retCode !== 0) {
+                return `Failed to cancelOrder : ${cancelOrder.retMsg}`;
+              }
             }
+          } else {
+            console.log(`No conditional orders to cancel for ${signal.symbol}`);
           }
         } else {
           console.log(`No conditional orders to cancel for ${signal.symbol}`);
         }
       } else {
-        console.log(`No conditional orders to cancel for ${signal.symbol}`);
+        return `Open ${currentSide} position already exists for ${signal.symbol}`;
+      }
+    }
+    console.log("signal.action", signal.action);
+    if (signal.action === undefined) {
+      // Place the new limit order
+      const response = await bybitClient.submitOrder({
+        category: "linear",
+        symbol: signal.symbol,
+        side,
+        orderType: "Market",
+        qty: calculatedQuantity,
+        price: limitPrice,
+        // timeInForce: "GoodTillCancel",
+      });
+
+      console.log("Submit Order Response:", response);
+
+      if (response.retCode !== 0) {
+        console.error(`Order rejected: ${response.retMsg}`);
+      } else {
+        console.log(
+          `Limit Order placed: ${signal.symbol} ${side}, with ${fixedUSDTAmount} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
+        );
+      }
+    }
+
+    // Pozisyon açıldıktan sonra %11'i için take profit ayarla
+    const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(
+      qtyPrecision
+    ); // %11'lik miktar
+    const takeProfitPrice =
+      side === "Buy"
+        ? (symbolPrice * 1.0044).toFixed(4) // %11 yukarı fiyat
+        : (symbolPrice * 0.9956).toFixed(4); // %11 aşağı fiyat
+
+    console.log(
+      `Setting take profit for ${signal.symbol}: ${takeProfitQuantity} at ${takeProfitPrice}`
+    );
+
+    const position = await bybitClient.getPositionInfo({
+      category: "linear",
+      symbol: signal.symbol,
+    });
+
+    if (position.retCode !== 0) {
+      return `Failed to close position: ${position.retMsg}`;
+    }
+
+    if (position.result.list[0].size > 0) {
+      const takeProfitResponse = await bybitClient.setTradingStop({
+        category: "linear",
+        symbol: signal.symbol,
+        takeProfit: takeProfitPrice,
+        tpTriggerBy: "MarkPrice",
+        tpslMode: "Partial",
+        tpOrderType: "Limit",
+        tpSize: takeProfitQuantity,
+        tpLimitPrice: takeProfitPrice,
+        positionIdx: 0,
+      });
+
+      if (takeProfitResponse.retCode !== 0) {
+        return `Take profit rejected: ${takeProfitResponse.retMsg}`;
+      } else {
+        return `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`;
       }
     } else {
-      return `Open ${currentSide} position already exists for ${signal.symbol}`;
+      return "No open position for the specified symbol.";
     }
+  } catch (error) {
+    return `An error occurred while placing the order: ${error.message}`;
   }
-  console.log("signal.action", signal.action);
-  if (signal.action === undefined) {
-    // Place the new limit order
-    const response = await bybitClient.submitOrder({
-      category: "linear",
-      symbol: signal.symbol,
-      side,
-      orderType: "Market",
-      qty: calculatedQuantity,
-      price: limitPrice,
-      // timeInForce: "GoodTillCancel",
-    });
-
-    console.log("Submit Order Response:", response);
-
-    if (response.retCode !== 0) {
-      console.error(`Order rejected: ${response.retMsg}`);
-    } else {
-      console.log(
-        `Limit Order placed: ${signal.symbol} ${side}, with ${fixedUSDTAmount} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
-      );
-    }
-  }
-
-  // Pozisyon açıldıktan sonra %11'i için take profit ayarla
-  const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(qtyPrecision); // %11'lik miktar
-  const takeProfitPrice =
-    side === "Buy"
-      ? (symbolPrice * 1.0044).toFixed(4) // %11 yukarı fiyat
-      : (symbolPrice * 0.9956).toFixed(4); // %11 aşağı fiyat
-
-  console.log(
-    `Setting take profit for ${signal.symbol}: ${takeProfitQuantity} at ${takeProfitPrice}`
-  );
-
-  const position = await bybitClient.getPositionInfo({
-    category: "linear",
-    symbol: signal.symbol,
-  });
-
-  if (position.retCode !== 0) {
-    return `Failed to close position: ${position.retMsg}`;
-  }
-
-  if (position.result.list[0].size > 0) {
-    const takeProfitResponse = await bybitClient.setTradingStop({
-      category: "linear",
-      symbol: signal.symbol,
-      takeProfit: takeProfitPrice,
-      tpTriggerBy: "MarkPrice",
-      tpslMode: "Partial",
-      tpOrderType: "Limit",
-      tpSize: takeProfitQuantity,
-      tpLimitPrice: takeProfitPrice,
-      positionIdx: 0,
-    });
-
-    if (takeProfitResponse.retCode !== 0) {
-      return `Take profit rejected: ${takeProfitResponse.retMsg}`;
-    } else {
-      return `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`;
-    }
-  } else {
-    return "No open position for the specified symbol.";
-  }
-  // } catch (error) {
-  //   return `An error occurred while placing the order: ${error.message}`;
-  // }
 }
 
 // Webhook endpoint
