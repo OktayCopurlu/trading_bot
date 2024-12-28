@@ -44,8 +44,7 @@ function parseSignal(jsonSignal) {
       entry: parseFloat(price),
     };
   } catch (err) {
-    console.error("Error parsing signal:", err);
-    return null;
+    return `Error parsing signal: ${err}`;
   }
 }
 
@@ -61,7 +60,7 @@ async function placeOrder(signal) {
     });
 
     if (marketPriceData.retCode !== 0) {
-      return `Failed to get tickers : ${marketPriceData.retMsg}`;
+      throw new Error(`Failed to get tickers : ${marketPriceData.retMsg}`);
     }
 
     if (
@@ -69,7 +68,7 @@ async function placeOrder(signal) {
       !marketPriceData.result.list ||
       marketPriceData.result.list.length === 0
     ) {
-      return `Could not fetch price for symbol: ${signal.symbol}`;
+      throw new Error(`Could not fetch price for symbol: ${signal.symbol}`);
     }
 
     const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
@@ -79,12 +78,14 @@ async function placeOrder(signal) {
     });
 
     if (instrumentDetails.retCode !== 0) {
-      return `Failed to getInstrumentsInfo : ${instrumentDetails.retMsg}`;
+      throw new Error(
+        `Failed to getInstrumentsInfo : ${instrumentDetails.retMsg}`
+      );
     }
 
     const instrument = instrumentDetails.result.list[0];
     if (!instrument) {
-      return `Symbol not found: ${signal.symbol}`;
+      throw new Error(`Symbol not found: ${signal.symbol}`);
     }
 
     const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
@@ -139,7 +140,9 @@ async function placeOrder(signal) {
           });
 
           if (orderResponse.retCode !== 0) {
-            return `Failed to close position: ${orderResponse.retMsg}`;
+            throw new Error(
+              `Failed to close position: ${orderResponse.retMsg}`
+            );
           }
           console.log(`Position closed for ${signal.symbol}`);
 
@@ -164,7 +167,9 @@ async function placeOrder(signal) {
               });
 
               if (instrumentDetails.retCode !== 0) {
-                return `Failed to cancelOrder : ${cancelOrder.retMsg}`;
+                throw new Error(
+                  `Failed to cancelOrder : ${cancelOrder.retMsg}`
+                );
               }
             }
           } else {
@@ -193,7 +198,7 @@ async function placeOrder(signal) {
       console.log("Submit Order Response:", response);
 
       if (response.retCode !== 0) {
-        console.error(`Order rejected: ${response.retMsg}`);
+        throw new Error(`Order rejected: ${response.retMsg}`());
       } else {
         console.log(
           `Limit Order placed: ${signal.symbol} ${side}, with ${fixedUSDTAmount} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
@@ -220,7 +225,7 @@ async function placeOrder(signal) {
     });
 
     if (position.retCode !== 0) {
-      return `Failed to close position: ${position.retMsg}`;
+      throw new Error`Failed to close position: ${position.retMsg}`();
     }
 
     if (position.result.list[0].size > 0) {
@@ -237,12 +242,14 @@ async function placeOrder(signal) {
       });
 
       if (takeProfitResponse.retCode !== 0) {
-        return `Take profit rejected: ${takeProfitResponse.retMsg}`;
+        throw new Error(`Take profit rejected: ${takeProfitResponse.retMsg}`);
       } else {
-        return `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`;
+        throw new Error(
+          `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`
+        );
       }
     } else {
-      return "No open position for the specified symbol.";
+      throw new Error("No open position for the specified symbol.");
     }
   } catch (error) {
     return `An error occurred while placing the order: ${error.message}`;
