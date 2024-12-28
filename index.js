@@ -257,6 +257,7 @@ app.post("/webhook", (req, res) => {
 // / endpoint
 app.get("/", (req, res) => {
   res.status(200).send("Get worked successfully.");
+  res.status(200).send(`process.env: ${process.env}`);
 });
 
 // Start the server
