@@ -229,7 +229,7 @@ async function placeOrder(signal) {
       return "No open position for the specified symbol.";
     }
   } catch (error) {
-    return "An error occurred while placing the order.";
+    return `An error occurred while placing the order: ${error.message}`;
   }
 }
 
