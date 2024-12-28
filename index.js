@@ -256,8 +256,10 @@ app.post("/webhook", (req, res) => {
 
 // / endpoint
 app.get("/", (req, res) => {
-  res.status(200).send("Get worked successfully.");
-  res.status(200).send(`process.env: ${process.env}`);
+  // res.status(200).send("Get worked successfully.");
+  // res.status(200).send(`process.env: ${process.env.BYBIT_API_KEY}`);
+  // res.status(200).send(`process.env: ${process.env.BYBIT_API_SECRET}`);
+  // res.status(200).send(`process.env: ${process.env.PORT}`);
 });
 
 // Start the server
