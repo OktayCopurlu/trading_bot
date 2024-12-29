@@ -1,7 +1,7 @@
 const { RestClientV5 } = require("bybit-api");
 const express = require("express");
 
-const fixedUSDTAmount = 10; // Total margin size in USDT
+const totalMarginSize = 20; // Total margin size in USDT
 const targetLeverage = 25; // Target leverage
 // Bybit API information
 const BYBIT_API_KEY = process.env.BYBIT_API_KEY || "jyc9UHox5e0YIDijdK";
@@ -26,8 +26,12 @@ function parseSignal(jsonSignal) {
     const { symbol, price, signal, message } = jsonSignal;
 
     if (!signal) {
-      console.log("No actionable signal: price is equal to SMA50");
+      console.log("No actionable signal found");
       return null;
+    }
+    // Remove .P suffix if it exists
+    if (symbol.endsWith(".P")) {
+      symbol = symbol.replace(".P", "");
     }
 
     const SL_TP = message?.includes("SL")
@@ -35,7 +39,6 @@ function parseSignal(jsonSignal) {
       : message?.includes("TP")
       ? "TP"
       : undefined;
-    console.log("Signal message:", SL_TP);
 
     return {
       action: SL_TP,
@@ -48,12 +51,10 @@ function parseSignal(jsonSignal) {
   }
 }
 
-// Function to place orders on Bybit
 async function placeOrder(signal) {
   try {
     const side = signal.signal;
 
-    console.log(`Fetching price for symbol: ${signal.symbol}`);
     const marketPriceData = await bybitClient.getTickers({
       category: "linear",
       symbol: signal.symbol,
@@ -93,7 +94,7 @@ async function placeOrder(signal) {
     const tickSize = parseFloat(instrument.priceFilter.tickSize);
 
     // Calculate the correct quantity for the target leverage
-    const targetNotional = fixedUSDTAmount * targetLeverage; // $5 * 25x = $125
+    const targetNotional = totalMarginSize * targetLeverage; // $5 * 25x = $125
     let calculatedQuantity = (targetNotional / symbolPrice).toFixed(
       qtyPrecision
     );
@@ -123,10 +124,6 @@ async function placeOrder(signal) {
 
       // If the current signal is the opposite of the open position, close the open position first
       if (currentSide !== side) {
-        console.log(
-          `Closing open ${currentSide} position for ${signal.symbol}`
-        );
-
         if (currentSide !== "") {
           const orderResponse = await bybitClient.submitOrder({
             category: "linear",
@@ -140,10 +137,7 @@ async function placeOrder(signal) {
           if (orderResponse.retCode !== 0) {
             return `Failed to close position: ${orderResponse.retMsg}`;
           }
-          console.log(`Position closed for ${signal.symbol}`);
 
-          // 2. Şartlı emirleri iptal et
-          console.log(`Fetching conditional orders for ${signal.symbol}`);
           const activeOrders = await bybitClient.getActiveOrders({
             category: "linear",
             symbol: signal.symbol,
@@ -155,7 +149,6 @@ async function placeOrder(signal) {
             activeOrders.result.list.length > 0
           ) {
             for (const order of activeOrders.result.list) {
-              console.log(`Canceling conditional order: ${order.orderId}`);
               const cancelOrder = await bybitClient.cancelOrder({
                 category: "linear",
                 symbol: signal.symbol,
@@ -176,9 +169,9 @@ async function placeOrder(signal) {
         return `Open ${currentSide} position already exists for ${signal.symbol}`;
       }
     }
-    console.log("signal.action", signal.action);
+
     if (signal.action === undefined) {
-      // Place the new limit order
+      // Place the new  order
       const response = await bybitClient.submitOrder({
         category: "linear",
         symbol: signal.symbol,
@@ -189,29 +182,23 @@ async function placeOrder(signal) {
         // timeInForce: "GoodTillCancel",
       });
 
-      console.log("Submit Order Response:", response);
-
       if (response.retCode !== 0) {
         return `Order rejected: ${response.retMsg}`;
       } else {
         console.log(
-          `Limit Order placed: ${signal.symbol} ${side}, with ${fixedUSDTAmount} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
+          `Limit Order placed: ${signal.symbol} ${side}, with ${totalMarginSize} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
         );
       }
     }
 
-    // Pozisyon açıldıktan sonra %11'i için take profit ayarla
+    // Pozisyon açıldıktan sonra %12.5'i için take profit ayarla
     const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(
       qtyPrecision
-    ); // %11'lik miktar
+    );
     const takeProfitPrice =
       side === "Buy"
-        ? (symbolPrice * 1.0044).toFixed(4) // %11 yukarı fiyat
-        : (symbolPrice * 0.9956).toFixed(4); // %11 aşağı fiyat
-
-    console.log(
-      `Setting take profit for ${signal.symbol}: ${takeProfitQuantity} at ${takeProfitPrice}`
-    );
+        ? (symbolPrice * 1.005).toFixed(4) // %12.5 yukarı fiyat
+        : (symbolPrice * 0.995).toFixed(4); // %12.5 aşağı fiyat
 
     const position = await bybitClient.getPositionInfo({
       category: "linear",
@@ -253,7 +240,6 @@ async function placeOrder(signal) {
 // Webhook endpoint
 app.post("/webhook", async (req, res) => {
   const signal = parseSignal(req.body);
-  console.log("Received signal:", signal);
 
   if (signal) {
     const response = await placeOrder(signal);
@@ -265,8 +251,7 @@ app.post("/webhook", async (req, res) => {
 
 // / endpoint
 app.get("/", (req, res) => {
-  // res.status(200).send("Get worked successfully.");
-  res.status(200).send(`process.env: ${BYBIT_API_KEY}`);
+  res.status(200).send(`TRADING BOT IS RUNNING`);
 });
 
 // Start the server
