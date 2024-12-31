@@ -1,9 +1,8 @@
-const { RestClientV5 } = require("bybit-api");
+const { RestClientV5, WebsocketClient } = require("bybit-api");
 const express = require("express");
 
 const totalMarginSize = 20; // Total margin size in USDT
-const targetLeverage = 25; // Target leverage
-// Bybit API information
+const targetLeverage = 25; // Target leverage// Bybit API information
 const BYBIT_API_KEY = process.env.BYBIT_API_KEY || "jyc9UHox5e0YIDijdK";
 const BYBIT_API_SECRET =
   process.env.BYBIT_API_SECRET || "buNQyObMuC3NpVdVGZydi2CKOnu3DHucZq4W";
@@ -14,6 +13,15 @@ const bybitClient = new RestClientV5({
   key: BYBIT_API_KEY,
   secret: BYBIT_API_SECRET,
   testnet: useTestnet,
+});
+
+// WebSocket client
+const wsClient = new WebsocketClient({
+  key: BYBIT_API_KEY,
+  secret: BYBIT_API_SECRET,
+  testnet: useTestnet,
+  market: "v5",
+  channel_type: "private",
 });
 
 // Express server for webhook
@@ -48,6 +56,7 @@ async function placeOrder(signal) {
   try {
     const side = signal.signal;
 
+    // Fetch market price and instrument details
     const marketPriceData = await bybitClient.getTickers({
       category: "linear",
       symbol: signal.symbol,
@@ -57,14 +66,6 @@ async function placeOrder(signal) {
       return `Failed to get tickers : ${marketPriceData.retMsg}`;
     }
 
-    if (
-      !marketPriceData.result ||
-      !marketPriceData.result.list ||
-      marketPriceData.result.list.length === 0
-    ) {
-      return `Could not fetch price for symbol: ${signal.symbol}`;
-    }
-
     const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
     const instrumentDetails = await bybitClient.getInstrumentsInfo({
       category: "linear",
@@ -72,14 +73,10 @@ async function placeOrder(signal) {
     });
 
     if (instrumentDetails.retCode !== 0) {
-      return `Failed to getInstrumentsInfo : ${instrumentDetails.retMsg}`;
+      return `Failed to get Instruments Info : ${instrumentDetails.retMsg}`;
     }
 
     const instrument = instrumentDetails.result.list[0];
-    if (!instrument) {
-      return `Symbol not found: ${signal.symbol}`;
-    }
-
     const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
     const qtyPrecision = parseInt(
       instrument.lotSizeFilter.qtyStep.split(".")[1]?.length || 0
@@ -87,25 +84,22 @@ async function placeOrder(signal) {
     const tickSize = parseFloat(instrument.priceFilter.tickSize);
 
     // Calculate the correct quantity for the target leverage
-    const targetNotional = totalMarginSize * targetLeverage; // $5 * 25x = $125
+    const targetNotional = totalMarginSize * targetLeverage;
     let calculatedQuantity = (targetNotional / symbolPrice).toFixed(
       qtyPrecision
     );
-
-    // Ensure quantity meets minimum order size
     calculatedQuantity = Math.max(calculatedQuantity, minQty).toFixed(
       qtyPrecision
     );
 
     // Calculate limit price
-    const priceOffset = tickSize * 5; // Adjust offset as needed
-
+    const priceOffset = tickSize * 5;
     const limitPrice =
       side === "Buy"
         ? (symbolPrice - priceOffset).toFixed(4)
         : (symbolPrice + priceOffset).toFixed(4);
 
-    // Check if there is an open position for the same symbol
+    // Check for existing positions
     const openPositions = await bybitClient.getPositionInfo({
       category: "linear",
       symbol: signal.symbol,
@@ -115,7 +109,6 @@ async function placeOrder(signal) {
       const openPosition = openPositions.result.list[0];
       const openPositionSide = openPosition.side;
 
-      // If the current signal is the opposite of the open position, close the open position first
       if (openPositionSide !== side) {
         if (openPositionSide !== "") {
           const orderResponse = await bybitClient.submitOrder({
@@ -130,10 +123,6 @@ async function placeOrder(signal) {
           if (orderResponse.retCode !== 0) {
             return `Failed to close position: ${orderResponse.retMsg}`;
           }
-
-          return `Position closed: ${signal.symbol}`;
-        } else {
-          console.log(`No conditional orders to cancel for ${signal.symbol}`);
         }
       } else {
         return `Open ${openPositionSide} position already exists for ${signal.symbol}`;
@@ -141,7 +130,7 @@ async function placeOrder(signal) {
     }
 
     if (side !== "Close") {
-      // Place the new  order
+      // Place the new order
       const response = await bybitClient.submitOrder({
         category: "linear",
         symbol: signal.symbol,
@@ -149,18 +138,17 @@ async function placeOrder(signal) {
         orderType: "Market",
         qty: calculatedQuantity,
         price: limitPrice,
-        // timeInForce: "GoodTillCancel",
       });
 
       if (response.retCode !== 0) {
         return `Order rejected: ${response.retMsg}`;
       } else {
         console.log(
-          `Limit Order placed: ${signal.symbol} ${side}, with ${totalMarginSize} USDT margin, ${targetLeverage}x leverage. Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
+          `Limit Order placed: ${signal.symbol} ${side}, Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
         );
       }
 
-      // Pozisyon açıldıktan sonra %12.5'i için take profit ayarla
+      // Set Take Profit and Stop Loss
       const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(
         qtyPrecision
       );
@@ -188,6 +176,7 @@ async function placeOrder(signal) {
       if (position.retCode !== 0) {
         return `Failed to close position: ${position.retMsg}`;
       }
+
       const takeProfitPoints = [takeProfitPrice1, takeProfitPrice2];
       if (position.result.list[0].size > 0) {
         for (let i = 0; i < takeProfitPoints.length; i++) {
@@ -213,6 +202,7 @@ async function placeOrder(signal) {
           }
         }
 
+        // Create Stop Loss order
         const stopLossResponse = await bybitClient.setTradingStop({
           category: "linear",
           symbol: signal.symbol,
@@ -225,8 +215,6 @@ async function placeOrder(signal) {
         } else {
           return `Stop Loss set for ${signal.symbol} at ${stopLossPrice}`;
         }
-      } else {
-        return "No open position for the specified symbol.";
       }
     }
   } catch (error) {
@@ -248,7 +236,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// / endpoint
+// Root endpoint
 app.get("/", (req, res) => {
   res.status(200).send(`TRADING BOT IS RUNNING`);
 });
@@ -256,5 +244,72 @@ app.get("/", (req, res) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Webhook server running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
+});
+
+wsClient.subscribeV5(["order"]);
+
+// Handle WebSocket messages
+wsClient.on("update", async (data) => {
+  if (data.topic === "order") {
+    for (let index = 0; index < data.data.length; index++) {
+      const orderData = data.data[index];
+      const orderStatus = orderData.orderStatus;
+
+      if (
+        orderStatus === "Filled" &&
+        orderData.stopOrderType === "PartialTakeProfit"
+      ) {
+        console.log(`Take Profit order ${orderData.symbol} has been filled.`);
+
+        // Cancel existing Stop Loss order if any
+        const existingOrders = await bybitClient.getActiveOrders({
+          category: "linear",
+          symbol: orderData.symbol,
+        });
+
+        for (const order of existingOrders.result.list) {
+          if (order.stopOrderType === "StopLoss") {
+            const cancelResponse = await bybitClient.cancelOrder({
+              category: "linear",
+              symbol: orderData.symbol,
+              orderId: order.orderId,
+            });
+
+            if (cancelResponse.retCode !== 0) {
+              console.error(
+                `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
+              );
+            } else {
+              console.log(
+                `Existing Stop Loss order ${order.orderId} cancelled.`
+              );
+            }
+          }
+        }
+
+        // Calculate Stop Loss price
+        const symbolPrice = orderData.avgPrice;
+        const side = orderData.side;
+        const stopLossPrice =
+          side === "Sell"
+            ? (symbolPrice * 0.981).toFixed(4)
+            : (symbolPrice * 1.019).toFixed(4);
+
+        // Create Stop Loss order
+        const stopLossResponse = await bybitClient.setTradingStop({
+          category: "linear",
+          symbol: orderData.symbol,
+          stopLoss: stopLossPrice,
+          slTriggerBy: "MarkPrice",
+        });
+
+        if (stopLossResponse.retCode !== 0) {
+          return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
+        } else {
+          return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
+        }
+      }
+    }
+  }
 });
