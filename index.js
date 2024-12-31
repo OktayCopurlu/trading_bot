@@ -169,6 +169,12 @@ async function placeOrder(signal) {
           ? (symbolPrice * 1.005).toFixed(4) // %12.5 yukarı fiyat
           : (symbolPrice * 0.995).toFixed(4); // %12.5 aşağı fiyat
 
+      // Stop Loss hesaplama
+      const stopLossPrice =
+        side === "Buy"
+          ? (symbolPrice * 0.982).toFixed(4) // %50 aşağı fiyat
+          : (symbolPrice * 1.018).toFixed(4); // %50 yukarı fiyat
+
       const position = await bybitClient.getPositionInfo({
         category: "linear",
         symbol: signal.symbol,
@@ -190,6 +196,19 @@ async function placeOrder(signal) {
           tpLimitPrice: takeProfitPrice,
           positionIdx: 0,
         });
+
+        const stopLossResponse = await bybitClient.setTradingStop({
+          category: "linear",
+          symbol: signal.symbol,
+          stopLoss: stopLossPrice,
+          slTriggerBy: "MarkPrice",
+        });
+
+        if (stopLossResponse.retCode !== 0) {
+          console.log(`Stop Loss rejected: ${stopLossResponse.retMsg}`);
+        } else {
+          console.log(`Stop Loss set for ${signal.symbol} at ${stopLossPrice}`);
+        }
 
         if (takeProfitResponse.retCode !== 0) {
           return `Take profit rejected: ${takeProfitResponse.retMsg}`;
