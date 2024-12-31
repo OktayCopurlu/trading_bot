@@ -164,10 +164,15 @@ async function placeOrder(signal) {
       const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(
         qtyPrecision
       );
-      const takeProfitPrice =
+      const takeProfitPrice1 =
         side === "Buy"
-          ? (symbolPrice * 1.005).toFixed(4) // %12.5 yukarı fiyat
-          : (symbolPrice * 0.995).toFixed(4); // %12.5 aşağı fiyat
+          ? (symbolPrice * 1.01).toFixed(4) // %25 yukarı fiyat
+          : (symbolPrice * 0.99).toFixed(4); // %25 aşağı fiyat
+
+      const takeProfitPrice2 =
+        side === "Buy"
+          ? (symbolPrice * 1.02).toFixed(4) // %50 yukarı fiyat
+          : (symbolPrice * 0.98).toFixed(4); // %50 aşağı fiyat
 
       // Stop Loss hesaplama
       const stopLossPrice =
@@ -183,19 +188,30 @@ async function placeOrder(signal) {
       if (position.retCode !== 0) {
         return `Failed to close position: ${position.retMsg}`;
       }
-
+      const takeProfitPoints = [takeProfitPrice1, takeProfitPrice2];
       if (position.result.list[0].size > 0) {
-        const takeProfitResponse = await bybitClient.setTradingStop({
-          category: "linear",
-          symbol: signal.symbol,
-          takeProfit: takeProfitPrice,
-          tpTriggerBy: "MarkPrice",
-          tpslMode: "Partial",
-          tpOrderType: "Limit",
-          tpSize: takeProfitQuantity,
-          tpLimitPrice: takeProfitPrice,
-          positionIdx: 0,
-        });
+        for (let i = 0; i < takeProfitPoints.length; i++) {
+          const takeProfitPrice = takeProfitPoints[i];
+          const takeProfitResponse = await bybitClient.setTradingStop({
+            category: "linear",
+            symbol: signal.symbol,
+            takeProfit: takeProfitPrice,
+            tpTriggerBy: "MarkPrice",
+            tpslMode: "Partial",
+            tpOrderType: "Limit",
+            tpSize: takeProfitQuantity,
+            tpLimitPrice: takeProfitPrice,
+            positionIdx: 0,
+          });
+
+          if (takeProfitResponse.retCode !== 0) {
+            console.log(`Take profit rejected: ${takeProfitResponse.retMsg}`);
+          } else {
+            console.log(
+              `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`
+            );
+          }
+        }
 
         const stopLossResponse = await bybitClient.setTradingStop({
           category: "linear",
@@ -205,15 +221,9 @@ async function placeOrder(signal) {
         });
 
         if (stopLossResponse.retCode !== 0) {
-          console.log(`Stop Loss rejected: ${stopLossResponse.retMsg}`);
+          return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
         } else {
-          console.log(`Stop Loss set for ${signal.symbol} at ${stopLossPrice}`);
-        }
-
-        if (takeProfitResponse.retCode !== 0) {
-          return `Take profit rejected: ${takeProfitResponse.retMsg}`;
-        } else {
-          return `Take profit order placed: ${signal.symbol} ${takeProfitQuantity} at ${takeProfitPrice}`;
+          return `Stop Loss set for ${signal.symbol} at ${stopLossPrice}`;
         }
       } else {
         return "No open position for the specified symbol.";
