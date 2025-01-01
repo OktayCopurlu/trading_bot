@@ -1,11 +1,11 @@
 const { RestClientV5, WebsocketClient } = require("bybit-api");
 const express = require("express");
+require("dotenv").config();
 
-const totalMarginSize = 20; // Total margin size in USDT
-const targetLeverage = 25; // Target leverage// Bybit API information
-const BYBIT_API_KEY = process.env.BYBIT_API_KEY || "jyc9UHox5e0YIDijdK";
-const BYBIT_API_SECRET =
-  process.env.BYBIT_API_SECRET || "buNQyObMuC3NpVdVGZydi2CKOnu3DHucZq4W";
+const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
+const targetLeverage = process.env.TARGET_LEVERAGE;
+const BYBIT_API_KEY = process.env.BYBIT_API_KEY;
+const BYBIT_API_SECRET = process.env.BYBIT_API_SECRET;
 const useTestnet = false;
 
 // Bybit client
