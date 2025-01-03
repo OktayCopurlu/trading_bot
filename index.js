@@ -6,12 +6,18 @@ const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
 const targetLeverage = process.env.TARGET_LEVERAGE;
 const BYBIT_API_KEY = process.env.BYBIT_API_KEY;
 const BYBIT_API_SECRET = process.env.BYBIT_API_SECRET;
-const LONG_TAKE_PROFIT_1 = process.env.LONG_TAKE_PROFIT_1;
-const LONG_TAKE_PROFIT_2 = process.env.LONG_TAKE_PROFIT_2;
-const SHORT_TAKE_PROFIT_1 = process.env.SHORT_TAKE_PROFIT_1;
-const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_2;
-const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS;
-const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS;
+const LONG_TAKE_PROFIT_1 = process.env.LONG_TAKE_PROFIT_PERCENT_1;
+const LONG_TAKE_PROFIT_2 = process.env.LONG_TAKE_PROFIT_PERCENT_2;
+const SHORT_TAKE_PROFIT_1 = process.env.SHORT_TAKE_PROFIT_PERCENT_1;
+const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_PERCENT_2;
+const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS_PERCENT;
+const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS_PERCENT;
+console.log("LONG_TAKE_PROFIT_1", LONG_TAKE_PROFIT_1);
+console.log("LONG_TAKE_PROFIT_2", LONG_TAKE_PROFIT_2);
+console.log("SHORT_TAKE_PROFIT_1", SHORT_TAKE_PROFIT_1);
+console.log("SHORT_TAKE_PROFIT_2", SHORT_TAKE_PROFIT_2);
+console.log("LONG_STOP_LOSS", LONG_STOP_LOSS);
+console.log("SHORT_STOP_LOSS", SHORT_STOP_LOSS);
 
 const useTestnet = false;
 
