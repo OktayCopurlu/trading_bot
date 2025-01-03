@@ -6,6 +6,13 @@ const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
 const targetLeverage = process.env.TARGET_LEVERAGE;
 const BYBIT_API_KEY = process.env.BYBIT_API_KEY;
 const BYBIT_API_SECRET = process.env.BYBIT_API_SECRET;
+const LONG_TAKE_PROFIT_1 = process.env.LONG_TAKE_PROFIT_1;
+const LONG_TAKE_PROFIT_2 = process.env.LONG_TAKE_PROFIT_2;
+const SHORT_TAKE_PROFIT_1 = process.env.SHORT_TAKE_PROFIT_1;
+const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_2;
+const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS;
+const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS;
+
 const useTestnet = false;
 
 // Bybit client
@@ -154,19 +161,19 @@ async function placeOrder(signal) {
       );
       const takeProfitPrice1 =
         side === "Buy"
-          ? (symbolPrice * 1.01).toFixed(4) // %25 yukarı fiyat
-          : (symbolPrice * 0.99).toFixed(4); // %25 aşağı fiyat
+          ? (symbolPrice * LONG_TAKE_PROFIT_1).toFixed(4) // %25 yukarı fiyat
+          : (symbolPrice * SHORT_TAKE_PROFIT_1).toFixed(4); // %25 aşağı fiyat
 
       const takeProfitPrice2 =
         side === "Buy"
-          ? (symbolPrice * 1.02).toFixed(4) // %50 yukarı fiyat
-          : (symbolPrice * 0.98).toFixed(4); // %50 aşağı fiyat
+          ? (symbolPrice * LONG_TAKE_PROFIT_2).toFixed(4) // %50 yukarı fiyat
+          : (symbolPrice * SHORT_TAKE_PROFIT_2).toFixed(4); // %50 aşağı fiyat
 
       // Stop Loss hesaplama
       const stopLossPrice =
         side === "Buy"
-          ? (symbolPrice * 0.982).toFixed(4) // %50 aşağı fiyat
-          : (symbolPrice * 1.018).toFixed(4); // %50 yukarı fiyat
+          ? (symbolPrice * LONG_STOP_LOSS).toFixed(4) // %50 aşağı fiyat
+          : (symbolPrice * SHORT_STOP_LOSS).toFixed(4); // %50 yukarı fiyat
 
       const position = await bybitClient.getPositionInfo({
         category: "linear",
