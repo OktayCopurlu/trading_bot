@@ -12,6 +12,7 @@ const SHORT_TAKE_PROFIT_1 = process.env.SHORT_TAKE_PROFIT_PERCENT_1;
 const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_PERCENT_2;
 const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS_PERCENT;
 const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS_PERCENT;
+const TAKE_PROFIT_QUANTITY = process.env.TAKE_PROFIT_QUANTITY;
 
 const useTestnet = false;
 
@@ -156,9 +157,9 @@ async function placeOrder(signal) {
       }
 
       // Set Take Profit and Stop Loss
-      const takeProfitQuantity = (calculatedQuantity * 0.25).toFixed(
-        qtyPrecision
-      );
+      const takeProfitQuantity = (
+        calculatedQuantity * TAKE_PROFIT_QUANTITY
+      ).toFixed(qtyPrecision);
       const takeProfitPrice1 =
         side === "Buy"
           ? (symbolPrice * LONG_TAKE_PROFIT_1).toFixed(4) // %25 yukarı fiyat
