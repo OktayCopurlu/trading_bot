@@ -1,6 +1,5 @@
 const { RestClientV5, WebsocketClient } = require("bybit-api");
 const express = require("express");
-const { start } = require("telegram/client/auth");
 require("dotenv").config();
 
 const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
@@ -18,8 +17,8 @@ const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
 const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
 const RESULT_NUMBER = process.env.RESULT_NUMBER;
 const DAY_LENGTH = process.env.DAY_LENGTH;
-let startDate = new Date(`${process.env.START_DATE}`);
-let endDate = new Date(`${process.env.END_DATE}`);
+let startDate = new Date(process.env.START_DATE);
+let endDate = new Date(process.env.END_DATE);
 
 const useTestnet = false;
 
@@ -28,15 +27,6 @@ const bybitClient = new RestClientV5({
   key: BYBIT_API_KEY,
   secret: BYBIT_API_SECRET,
   testnet: useTestnet,
-});
-
-// WebSocket client
-const wsClient = new WebsocketClient({
-  key: BYBIT_API_KEY,
-  secret: BYBIT_API_SECRET,
-  testnet: useTestnet,
-  market: "v5",
-  channel_type: "private",
 });
 
 // Express server for webhook
@@ -471,6 +461,15 @@ app.post("/webhook", async (req, res) => {
     res.status(400).send("Invalid signal received.");
   }
 });
+
+// WebSocket client
+// const wsClient = new WebsocketClient({
+//   key: BYBIT_API_KEY,
+//   secret: BYBIT_API_SECRET,
+//   testnet: useTestnet,
+//   market: "v5",
+//   channel_type: "private",
+// });
 
 // wsClient.subscribeV5(["order"]);
 
