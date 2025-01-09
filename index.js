@@ -1,5 +1,6 @@
 const { RestClientV5, WebsocketClient } = require("bybit-api");
 const express = require("express");
+const { start } = require("telegram/client/auth");
 require("dotenv").config();
 
 const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
@@ -17,6 +18,8 @@ const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
 const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
 const RESULT_NUMBER = process.env.RESULT_NUMBER;
 const DAY_LENGTH = process.env.DAY_LENGTH;
+let startDate = new Date(process.env.START_DATE);
+let endDate = new Date(process.env.END_DATE);
 
 const useTestnet = false;
 
@@ -282,12 +285,11 @@ const symbols = [
   "ZRCUSDT",
 ];
 
-const startDate = new Date();
-startDate.setDate(startDate.getDate() - DAY_LENGTH);
-const endDate = new Date();
-
-// const startDate = new Date("2025-01-01");
-// const endDate = new Date("2025-01-03");
+if (startDate === undefined || endDate === undefined) {
+  startDate = new Date();
+  startDate.setDate(startDate.getDate() - DAY_LENGTH);
+  endDate = new Date();
+}
 
 async function fetchTradingDataWithTransactionLogs() {
   const results = [];
@@ -296,7 +298,7 @@ async function fetchTradingDataWithTransactionLogs() {
   let totalFee = 0;
   let totalInvestment = 0;
   let totalInvestmentWithLeverage = 0;
-  let resp = "";
+
   for (const symbol of symbols) {
     try {
       // Kapalı pozisyonları al
@@ -362,7 +364,6 @@ async function fetchTradingDataWithTransactionLogs() {
       totalFee += symbolTotalFee;
       totalInvestment += symbolTotalInvestment;
       totalInvestmentWithLeverage += symbolTotalInvestmentWithLeverage;
-      resp = response;
     } catch (error) {
       console.error(`Error fetching data for ${symbol}:`, error.message);
     }
@@ -375,7 +376,6 @@ async function fetchTradingDataWithTransactionLogs() {
     totalFee: totalFee.toFixed(2),
     totalInvestment: totalInvestment.toFixed(0),
     totalInvestmentWithLeverage: totalInvestmentWithLeverage.toFixed(0),
-    response: resp,
   };
 }
 
@@ -388,7 +388,6 @@ app.get("/", async (req, res) => {
       totalFee,
       totalInvestment,
       totalInvestmentWithLeverage,
-      response,
     } = await fetchTradingDataWithTransactionLogs();
 
     // PnL'leri büyükten küçüğe sırala
@@ -453,7 +452,6 @@ app.get("/", async (req, res) => {
     html += `
         </tbody>
       </table>
-    ${JSON.stringify(response)}
     `;
 
     res.status(200).send(html);
