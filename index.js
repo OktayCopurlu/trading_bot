@@ -296,7 +296,7 @@ async function fetchTradingDataWithTransactionLogs() {
   let totalFee = 0;
   let totalInvestment = 0;
   let totalInvestmentWithLeverage = 0;
-
+  let resp = "";
   for (const symbol of symbols) {
     try {
       // Kapalı pozisyonları al
@@ -362,6 +362,7 @@ async function fetchTradingDataWithTransactionLogs() {
       totalFee += symbolTotalFee;
       totalInvestment += symbolTotalInvestment;
       totalInvestmentWithLeverage += symbolTotalInvestmentWithLeverage;
+      resp = response;
     } catch (error) {
       console.error(`Error fetching data for ${symbol}:`, error.message);
     }
@@ -374,7 +375,7 @@ async function fetchTradingDataWithTransactionLogs() {
     totalFee: totalFee.toFixed(2),
     totalInvestment: totalInvestment.toFixed(0),
     totalInvestmentWithLeverage: totalInvestmentWithLeverage.toFixed(0),
-    response,
+    response: resp,
   };
 }
 
