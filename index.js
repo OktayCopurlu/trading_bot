@@ -374,6 +374,7 @@ async function fetchTradingDataWithTransactionLogs() {
     totalFee: totalFee.toFixed(2),
     totalInvestment: totalInvestment.toFixed(0),
     totalInvestmentWithLeverage: totalInvestmentWithLeverage.toFixed(0),
+    response,
   };
 }
 
@@ -386,6 +387,7 @@ app.get("/", async (req, res) => {
       totalFee,
       totalInvestment,
       totalInvestmentWithLeverage,
+      response,
     } = await fetchTradingDataWithTransactionLogs();
 
     // PnL'leri büyükten küçüğe sırala
@@ -450,7 +452,7 @@ app.get("/", async (req, res) => {
     html += `
         </tbody>
       </table>
-
+    ${JSON.stringify(response)}
     `;
 
     res.status(200).send(html);
