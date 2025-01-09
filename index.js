@@ -18,8 +18,8 @@ const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
 const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
 const RESULT_NUMBER = process.env.RESULT_NUMBER;
 const DAY_LENGTH = process.env.DAY_LENGTH;
-let startDate = new Date(process.env.START_DATE);
-let endDate = new Date(process.env.END_DATE);
+let startDate = new Date(`${process.env.START_DATE}`);
+let endDate = new Date(`${process.env.END_DATE}`);
 
 const useTestnet = false;
 
