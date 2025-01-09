@@ -13,6 +13,10 @@ const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_PERCENT_2;
 const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS_PERCENT;
 const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS_PERCENT;
 const TAKE_PROFIT_QUANTITY = process.env.TAKE_PROFIT_QUANTITY;
+const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
+const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
+const RESULT_NUMBER = process.env.RESULT_NUMBER;
+const DAY_LENGTH = process.env.DAY_LENGTH;
 
 const useTestnet = false;
 
@@ -232,6 +236,229 @@ async function placeOrder(signal) {
   }
 }
 
+// const signal = parseSignal({
+//   symbol: "XRPUSDT",
+//   price: "0.31",
+//   signal: "Sell",
+// });
+
+// if (signal) {
+//   const response = placeOrder(signal);
+// }
+
+// Start the server
+const PORT = process.env.PORT || 3300;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+const symbols = [
+  "1CATUSDT",
+  "1000APUUSDT",
+  "1000PEPEUSDT",
+  "10000WHYUSDT",
+  "A8USDT",
+  "BENDOGUSDT",
+  "CARVUSDT",
+  "CVXUSDT",
+  "EGLDUSDT",
+  "FARTCOINUSDT",
+  "GMEUSDT",
+  "HBARUSDT",
+  "HIVEUSDT",
+  "HYPEUSDT",
+  "IDEXUSDT",
+  "KSMUSDT",
+  "LAIUSDT",
+  "MAXUSDT",
+  "MBLUSDT",
+  "RENUSDT",
+  "SDUSDT",
+  "SILLYUSDT",
+  "STPTUSDT",
+  "VELODROMEUSDT",
+  "VOXELUSDT",
+  "WAVESUSDT",
+  "ZRCUSDT",
+];
+
+const startDate = new Date();
+startDate.setDate(startDate.getDate() - DAY_LENGTH);
+const endDate = new Date();
+
+// const startDate = new Date("2025-01-01");
+// const endDate = new Date("2025-01-03");
+
+async function fetchTradingDataWithTransactionLogs() {
+  const results = [];
+  let totalClosedPositions = 0;
+  let totalPnL = 0;
+  let totalFee = 0;
+  let totalInvestment = 0;
+  let totalInvestmentWithLeverage = 0;
+
+  for (const symbol of symbols) {
+    try {
+      // Kapalı pozisyonları al
+      const response = await bybitClient.getClosedPnL({
+        category: "linear",
+        symbol,
+        limit: RESULT_NUMBER,
+      });
+
+      if (!response || !response.result || !response.result.list) {
+        console.log(`No data returned for ${symbol}`);
+        continue;
+      }
+
+      const closedPnLData = response.result.list.filter((pos) => {
+        const closedTime = new Date(parseInt(pos.updatedTime));
+        return closedTime >= startDate && closedTime <= endDate;
+      });
+      const totalPositions = closedPnLData.length;
+      const symbolTotalPnL = closedPnLData.reduce(
+        (sum, pos) => sum + parseFloat(pos.closedPnl),
+        0
+      );
+
+      // Fee Hesaplama
+      const symbolTotalFee = closedPnLData.reduce((sum, pos) => {
+        const feeRate =
+          pos.orderType === "Market" ? TAKER_FEE_RATE : MAKER_FEE_RATE;
+        const openingFee =
+          parseFloat(pos.avgEntryPrice) * parseFloat(pos.qty) * feeRate;
+        const closingFee =
+          parseFloat(pos.avgExitPrice) * parseFloat(pos.qty) * feeRate;
+        return sum + openingFee + closingFee;
+      }, 0);
+
+      // Total Investment Hesaplama
+      const symbolTotalInvestment = closedPnLData.reduce((sum, pos) => {
+        const leverage = parseFloat(pos.leverage);
+        const initialInvestment = parseFloat(pos.cumEntryValue) / leverage;
+        return sum + initialInvestment;
+      }, 0);
+
+      const symbolTotalInvestmentWithLeverage = closedPnLData.reduce(
+        (sum, pos) => {
+          const initialInvestment = parseFloat(pos.cumEntryValue);
+          return sum + initialInvestment;
+        },
+        0
+      );
+
+      results.push({
+        symbol,
+        totalPositions,
+        totalPnL: symbolTotalPnL.toFixed(2),
+        totalFee: symbolTotalFee.toFixed(2),
+        totalInvestment: symbolTotalInvestment.toFixed(2),
+        totalInvestmentWithLeverage:
+          symbolTotalInvestmentWithLeverage.toFixed(2),
+      });
+
+      totalClosedPositions += totalPositions;
+      totalPnL += symbolTotalPnL;
+      totalFee += symbolTotalFee;
+      totalInvestment += symbolTotalInvestment;
+      totalInvestmentWithLeverage += symbolTotalInvestmentWithLeverage;
+    } catch (error) {
+      console.error(`Error fetching data for ${symbol}:`, error.message);
+    }
+  }
+
+  return {
+    results,
+    totalClosedPositions,
+    totalPnL: totalPnL.toFixed(2),
+    totalFee: totalFee.toFixed(2),
+    totalInvestment: totalInvestment.toFixed(0),
+    totalInvestmentWithLeverage: totalInvestmentWithLeverage.toFixed(0),
+  };
+}
+
+app.get("/", async (req, res) => {
+  try {
+    const {
+      results,
+      totalClosedPositions,
+      totalPnL,
+      totalFee,
+      totalInvestment,
+      totalInvestmentWithLeverage,
+    } = await fetchTradingDataWithTransactionLogs();
+
+    // PnL'leri büyükten küçüğe sırala
+    results.sort((a, b) => b.totalPnL - a.totalPnL);
+
+    // HTML Tablosu oluştur
+    let html = `
+      <h1 style="text-align: center;">Trading Bot Results last ${RESULT_NUMBER} PnL</h1>
+      <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th>Number of Symbols</th>
+            <th>Number of Closed Positions</th>
+            <th>Total PnL (USDT)</th>
+            <th>Total Fee (USDT)</th>
+            <th>Total Investment (USDT)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${results.length}</td>
+            <td>${totalClosedPositions}</td>
+            <td style="color: ${
+              totalPnL >= 0 ? "green" : "red"
+            };">${totalPnL} USDT</td>
+            <td>${totalFee} USDT</td>
+            <td>${totalInvestment} USDT</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <br>
+      <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th>Symbol</th>
+            <th>Total Positions</th>
+            <th>Total Investment (USDT)</th>
+            <th>Total Fee (USDT)</th>
+            <th>Total PnL (USDT)</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    results.forEach(
+      ({ symbol, totalPositions, totalInvestment, totalFee, totalPnL }) => {
+        html += `
+        <tr>
+          <td>${symbol}</td>
+          <td>${totalPositions}</td>
+          <td>${totalInvestment}</td>
+          <td>${totalFee}</td>
+          <td style="color: ${
+            totalPnL >= 0 ? "green" : "red"
+          };">${totalPnL}</td>
+        </tr>
+      `;
+      }
+    );
+
+    html += `
+        </tbody>
+      </table>
+
+    `;
+
+    res.status(200).send(html);
+  } catch (error) {
+    res.status(500).send(`Error: ${error.message}`);
+  }
+});
+
 // Webhook endpoint
 app.post("/webhook", async (req, res) => {
   const signal = parseSignal(req.body);
@@ -244,80 +471,69 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// Root endpoint
-app.get("/", (req, res) => {
-  res.status(200).send(`TRADING BOT IS RUNNING`);
-});
+// wsClient.subscribeV5(["order"]);
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// // Handle WebSocket messages
+// wsClient.on("update", async (data) => {
+//   if (data.topic === "order") {
+//     for (let index = 0; index < data.data.length; index++) {
+//       const orderData = data.data[index];
+//       const orderStatus = orderData.orderStatus;
 
-wsClient.subscribeV5(["order"]);
+//       if (
+//         orderStatus === "Filled" &&
+//         orderData.stopOrderType === "PartialTakeProfit"
+//       ) {
+//         console.log(`Take Profit order ${orderData.symbol} has been filled.`);
 
-// Handle WebSocket messages
-wsClient.on("update", async (data) => {
-  if (data.topic === "order") {
-    for (let index = 0; index < data.data.length; index++) {
-      const orderData = data.data[index];
-      const orderStatus = orderData.orderStatus;
+//         // Cancel existing Stop Loss order if any
+//         const existingOrders = await bybitClient.getActiveOrders({
+//           category: "linear",
+//           symbol: orderData.symbol,
+//         });
 
-      if (
-        orderStatus === "Filled" &&
-        orderData.stopOrderType === "PartialTakeProfit"
-      ) {
-        console.log(`Take Profit order ${orderData.symbol} has been filled.`);
+//         for (const order of existingOrders.result.list) {
+//           if (order.stopOrderType === "StopLoss") {
+//             const cancelResponse = await bybitClient.cancelOrder({
+//               category: "linear",
+//               symbol: orderData.symbol,
+//               orderId: order.orderId,
+//             });
 
-        // Cancel existing Stop Loss order if any
-        const existingOrders = await bybitClient.getActiveOrders({
-          category: "linear",
-          symbol: orderData.symbol,
-        });
+//             if (cancelResponse.retCode !== 0) {
+//               console.error(
+//                 `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
+//               );
+//             } else {
+//               console.log(
+//                 `Existing Stop Loss order ${order.orderId} cancelled.`
+//               );
+//             }
+//           }
+//         }
 
-        for (const order of existingOrders.result.list) {
-          if (order.stopOrderType === "StopLoss") {
-            const cancelResponse = await bybitClient.cancelOrder({
-              category: "linear",
-              symbol: orderData.symbol,
-              orderId: order.orderId,
-            });
+//         // Calculate Stop Loss price
+//         const symbolPrice = orderData.avgPrice;
+//         const side = orderData.side;
+//         const stopLossPrice =
+//           side === "Sell"
+//             ? (symbolPrice * 0.981).toFixed(4)
+//             : (symbolPrice * 1.019).toFixed(4);
 
-            if (cancelResponse.retCode !== 0) {
-              console.error(
-                `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
-              );
-            } else {
-              console.log(
-                `Existing Stop Loss order ${order.orderId} cancelled.`
-              );
-            }
-          }
-        }
+//         // Create Stop Loss order
+//         const stopLossResponse = await bybitClient.setTradingStop({
+//           category: "linear",
+//           symbol: orderData.symbol,
+//           stopLoss: stopLossPrice,
+//           slTriggerBy: "MarkPrice",
+//         });
 
-        // Calculate Stop Loss price
-        const symbolPrice = orderData.avgPrice;
-        const side = orderData.side;
-        const stopLossPrice =
-          side === "Sell"
-            ? (symbolPrice * 0.981).toFixed(4)
-            : (symbolPrice * 1.019).toFixed(4);
-
-        // Create Stop Loss order
-        const stopLossResponse = await bybitClient.setTradingStop({
-          category: "linear",
-          symbol: orderData.symbol,
-          stopLoss: stopLossPrice,
-          slTriggerBy: "MarkPrice",
-        });
-
-        if (stopLossResponse.retCode !== 0) {
-          return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
-        } else {
-          return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
-        }
-      }
-    }
-  }
-});
+//         if (stopLossResponse.retCode !== 0) {
+//           return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
+//         } else {
+//           return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
+//         }
+//       }
+//     }
+//   }
+// });
