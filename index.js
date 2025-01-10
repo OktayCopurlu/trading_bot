@@ -389,7 +389,7 @@ app.get("/", async (req, res) => {
       <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
         <thead>
           <tr style="background-color: #f2f2f2;">
-            <th>Number of Symbols</th>
+            <th>Date Range</th>
             <th>Number of Closed Positions</th>
             <th>Total PnL (USDT)</th>
             <th>Total Fee (USDT)</th>
@@ -398,7 +398,7 @@ app.get("/", async (req, res) => {
         </thead>
         <tbody>
           <tr>
-            <td>${results.length}</td>
+            <td>${startDate} - ${endDate}</td>
             <td>${totalClosedPositions}</td>
             <td style="color: ${
               totalPnL >= 0 ? "green" : "red"
