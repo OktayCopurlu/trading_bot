@@ -383,6 +383,10 @@ app.get("/", async (req, res) => {
     // PnL'leri büyükten küçüğe sırala
     results.sort((a, b) => b.totalPnL - a.totalPnL);
 
+    const options = { day: "2-digit", month: "2-digit", year: "numeric" };
+    const formattedStartDate = startDate.toLocaleDateString("de-CH", options);
+    const formattedEndDate = endDate.toLocaleDateString("de-CH", options);
+
     // HTML Tablosu oluştur
     let html = `
       <h1 style="text-align: center;">Trading Bot Results last ${RESULT_NUMBER} PnL</h1>
@@ -398,7 +402,7 @@ app.get("/", async (req, res) => {
         </thead>
         <tbody>
           <tr>
-            <td>${startDate} - ${endDate}</td>
+            <td>${formattedStartDate} - ${formattedEndDate}</td>
             <td>${totalClosedPositions}</td>
             <td style="color: ${
               totalPnL >= 0 ? "green" : "red"
