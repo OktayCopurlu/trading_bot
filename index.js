@@ -283,7 +283,7 @@ const symbols = [
   "PENGUUSDT",
   "DOGEUSDT",
   "SONICUSDT",
-  "AIXBTUSD",
+  "AIXBTUSDT",
 ];
 
 if (startDate === undefined || endDate === undefined) {
@@ -478,77 +478,77 @@ app.post("/webhook", async (req, res) => {
 });
 
 // WebSocket client
-// const wsClient = new WebsocketClient({
-//   key: BYBIT_API_KEY,
-//   secret: BYBIT_API_SECRET,
-//   testnet: useTestnet,
-//   market: "v5",
-//   channel_type: "private",
-// });
+const wsClient = new WebsocketClient({
+  key: BYBIT_API_KEY,
+  secret: BYBIT_API_SECRET,
+  testnet: useTestnet,
+  market: "v5",
+  channel_type: "private",
+});
 
-// wsClient.subscribeV5(["order"]);
+wsClient.subscribeV5(["order"]);
 
-// // Handle WebSocket messages
-// wsClient.on("update", async (data) => {
-//   if (data.topic === "order") {
-//     for (let index = 0; index < data.data.length; index++) {
-//       const orderData = data.data[index];
-//       const orderStatus = orderData.orderStatus;
+// Handle WebSocket messages
+wsClient.on("update", async (data) => {
+  if (data.topic === "order") {
+    for (let index = 0; index < data.data.length; index++) {
+      const orderData = data.data[index];
+      const orderStatus = orderData.orderStatus;
 
-//       if (
-//         orderStatus === "Filled" &&
-//         orderData.stopOrderType === "PartialTakeProfit"
-//       ) {
-//         console.log(`Take Profit order ${orderData.symbol} has been filled.`);
+      if (
+        orderStatus === "Filled" &&
+        orderData.stopOrderType === "PartialTakeProfit"
+      ) {
+        console.log(`Take Profit order ${orderData.symbol} has been filled.`);
 
-//         // Cancel existing Stop Loss order if any
-//         const existingOrders = await bybitClient.getActiveOrders({
-//           category: "linear",
-//           symbol: orderData.symbol,
-//         });
+        // Cancel existing Stop Loss order if any
+        const existingOrders = await bybitClient.getActiveOrders({
+          category: "linear",
+          symbol: orderData.symbol,
+        });
 
-//         for (const order of existingOrders.result.list) {
-//           if (order.stopOrderType === "StopLoss") {
-//             const cancelResponse = await bybitClient.cancelOrder({
-//               category: "linear",
-//               symbol: orderData.symbol,
-//               orderId: order.orderId,
-//             });
+        for (const order of existingOrders.result.list) {
+          if (order.stopOrderType === "StopLoss") {
+            const cancelResponse = await bybitClient.cancelOrder({
+              category: "linear",
+              symbol: orderData.symbol,
+              orderId: order.orderId,
+            });
 
-//             if (cancelResponse.retCode !== 0) {
-//               console.error(
-//                 `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
-//               );
-//             } else {
-//               console.log(
-//                 `Existing Stop Loss order ${order.orderId} cancelled.`
-//               );
-//             }
-//           }
-//         }
+            if (cancelResponse.retCode !== 0) {
+              console.error(
+                `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
+              );
+            } else {
+              console.log(
+                `Existing Stop Loss order ${order.orderId} cancelled.`
+              );
+            }
+          }
+        }
 
-//         // Calculate Stop Loss price
-//         const symbolPrice = orderData.avgPrice;
-//         const side = orderData.side;
-//         const stopLossPrice =
-//           side === "Sell"
-//             ? (symbolPrice * 0.981).toFixed(4)
-//             : (symbolPrice * 1.019).toFixed(4);
+        // Calculate Stop Loss price
+        const symbolPrice = orderData.avgPrice;
+        const side = orderData.side;
+        const stopLossPrice =
+          side === "Sell"
+            ? (symbolPrice * 0.981).toFixed(4)
+            : (symbolPrice * 1.019).toFixed(4);
 
-//         // Create Stop Loss order
-//         const stopLossResponse = await bybitClient.setTradingStop({
-//           category: "linear",
-//           symbol: orderData.symbol,
-//           stopLoss: stopLossPrice,
-//           slTriggerBy: "MarkPrice",
-//         });
+        // Create Stop Loss order
+        const stopLossResponse = await bybitClient.setTradingStop({
+          category: "linear",
+          symbol: orderData.symbol,
+          stopLoss: stopLossPrice,
+          slTriggerBy: "MarkPrice",
+        });
 
-//         if (stopLossResponse.retCode !== 0) {
-//           return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
-//         } else {
-//           return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
-//         }
-//       }
-//     }
-//   }
-// });
+        if (stopLossResponse.retCode !== 0) {
+          return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
+        } else {
+          return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
+        }
+      }
+    }
+  }
+});
