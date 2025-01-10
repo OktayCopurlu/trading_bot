@@ -274,6 +274,16 @@ const symbols = [
   "VOXELUSDT",
   "WAVESUSDT",
   "ZRCUSDT",
+  "XRPUSDT",
+  "BTCUSDT",
+  "ETHUSDT",
+  "ADAUSDT",
+  "ENAUSDT",
+  "USUALUSDT",
+  "PENGUUSDT",
+  "DOGEUSDT",
+  "SONICUSDT",
+  "AIXBTUSD",
 ];
 
 if (startDate === undefined || endDate === undefined) {
@@ -390,7 +400,7 @@ app.get("/", async (req, res) => {
 
     // HTML Tablosu oluştur
     let html = `
-      <h1 style="text-align: center;">Trading Bot Results last ${RESULT_NUMBER} PnL</h1>
+      <h1 style="text-align: center;">Trading Bot Last ${RESULT_NUMBER} PnL Results</h1>
       <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
         <thead>
           <tr style="background-color: #f2f2f2;">
