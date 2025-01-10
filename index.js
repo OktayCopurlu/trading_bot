@@ -257,6 +257,7 @@ const symbols = [
   "EGLDUSDT",
   "FARTCOINUSDT",
   "GMEUSDT",
+  "GRIFFAINUSDT",
   "HBARUSDT",
   "HIVEUSDT",
   "HYPEUSDT",
