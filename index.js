@@ -17,6 +17,7 @@ const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
 const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
 const RESULT_NUMBER = process.env.RESULT_NUMBER;
 const DAY_LENGTH = process.env.DAY_LENGTH;
+const EXTRA_SYMBOLS = process.env.EXTRA_SYMBOLS;
 let startDate = new Date(process.env.START_DATE);
 let endDate = new Date(process.env.END_DATE);
 
@@ -245,7 +246,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-const symbols = [
+const SYMBOLS = [
   "1CATUSDT",
   "1000APUUSDT",
   "1000PEPEUSDT",
@@ -274,18 +275,12 @@ const symbols = [
   "VOXELUSDT",
   "WAVESUSDT",
   "ZRCUSDT",
-  "XRPUSDT",
-  "BTCUSDT",
-  "ETHUSDT",
-  "ADAUSDT",
-  "ENAUSDT",
-  "USUALUSDT",
-  "PENGUUSDT",
-  "DOGEUSDT",
-  "SONICUSDT",
-  "AIXBTUSDT",
 ];
 
+const ALL_SYMBOLS = SYMBOLS.concat(
+  EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
+);
+console.log(ALL_SYMBOLS);
 if (startDate === undefined || endDate === undefined) {
   startDate = new Date();
   startDate.setDate(startDate.getDate() - DAY_LENGTH);
@@ -300,7 +295,7 @@ async function fetchTradingDataWithTransactionLogs() {
   let totalInvestment = 0;
   let totalInvestmentWithLeverage = 0;
 
-  for (const symbol of symbols) {
+  for (const symbol of ALL_SYMBOLS) {
     try {
       // Kapalı pozisyonları al
       const response = await bybitClient.getClosedPnL({
