@@ -1,6 +1,8 @@
 const { RestClientV5, WebsocketClient } = require("bybit-api");
 const express = require("express");
 require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
 
 const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
 const targetLeverage = process.env.TARGET_LEVERAGE;
@@ -35,6 +37,25 @@ const bybitClient = new RestClientV5({
 // Express server for webhook
 const app = express();
 app.use(express.json());
+
+// Read symbols from JSON file
+const symbolsFilePath = path.join(__dirname, "symbols.json");
+let symbolsData = JSON.parse(fs.readFileSync(symbolsFilePath, "utf8"));
+const SYMBOLS = symbolsData.symbols;
+
+// Function to add a new symbol to the JSON file
+function addSymbolToJson(symbol) {
+  if (!SYMBOLS.includes(symbol)) {
+    SYMBOLS.push(symbol);
+    symbolsData.symbols = SYMBOLS;
+    fs.writeFileSync(
+      symbolsFilePath,
+      JSON.stringify(symbolsData, null, 2),
+      "utf8"
+    );
+    console.log(`Added new symbol: ${symbol}`);
+  }
+}
 
 // Function to parse incoming webhook messages
 function parseSignal(jsonSignal) {
@@ -151,8 +172,11 @@ async function placeOrder(signal) {
       if (response.retCode !== 0) {
         return `Order rejected: ${response.retMsg}`;
       } else {
+        if (!ALL_SYMBOLS.includes(signal.symbol)) {
+          addSymbolToJson(signal.symbol);
+        }
         console.log(
-          `Limit Order placed: ${signal.symbol} ${side}, Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
+          `Order placed: ${signal.symbol} ${side}, Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
         );
       }
 
@@ -234,7 +258,7 @@ async function placeOrder(signal) {
 
 // const signal = parseSignal({
 //   symbol: "XRPUSDT",
-//   price: "0.31",
+//   price: "2.41",
 //   signal: "Sell",
 // });
 
@@ -247,37 +271,6 @@ const PORT = process.env.PORT || 3300;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-const SYMBOLS = [
-  "1CATUSDT",
-  "1000APUUSDT",
-  "1000PEPEUSDT",
-  "10000WHYUSDT",
-  "A8USDT",
-  "BENDOGUSDT",
-  "CARVUSDT",
-  "CVXUSDT",
-  "EGLDUSDT",
-  "FARTCOINUSDT",
-  "GMEUSDT",
-  "GRIFFAINUSDT",
-  "HBARUSDT",
-  "HIVEUSDT",
-  "HYPEUSDT",
-  "IDEXUSDT",
-  "KSMUSDT",
-  "LAIUSDT",
-  "MAXUSDT",
-  "MBLUSDT",
-  "RENUSDT",
-  "SDUSDT",
-  "SILLYUSDT",
-  "STPTUSDT",
-  "VELODROMEUSDT",
-  "VOXELUSDT",
-  "WAVESUSDT",
-  "ZRCUSDT",
-];
 
 const ALL_SYMBOLS = SYMBOLS.concat(
   EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
