@@ -387,6 +387,9 @@ app.get("/", async (req, res) => {
     const options = { day: "2-digit", month: "2-digit", year: "numeric" };
     const formattedStartDate = startDate.toLocaleDateString("de-CH", options);
     const formattedEndDate = endDate.toLocaleDateString("de-CH", options);
+    // Gün sayısını hesapla
+    const timeDifference = endDate.getTime() - startDate.getTime();
+    const dayDifference = Math.ceil(timeDifference / (1000 * 3600 * 24));
 
     // HTML Tablosu oluştur
     let html = `
@@ -403,7 +406,7 @@ app.get("/", async (req, res) => {
         </thead>
         <tbody>
           <tr>
-            <td>${formattedStartDate} - ${formattedEndDate}</td>
+            <td>${formattedStartDate} - ${formattedEndDate} (${dayDifference} Days)</td>
             <td>${totalClosedPositions}</td>
             <td style="color: ${
               totalPnL >= 0 ? "green" : "red"
