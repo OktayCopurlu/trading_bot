@@ -19,7 +19,9 @@ const RESULT_NUMBER = process.env.RESULT_NUMBER;
 const DAY_LENGTH = process.env.DAY_LENGTH;
 const EXTRA_SYMBOLS = process.env.EXTRA_SYMBOLS;
 let startDate = new Date(process.env.START_DATE);
-let endDate = new Date(process.env.END_DATE);
+let endDate = process.env.END_DATE
+  ? new Date(process.env.END_DATE)
+  : new Date();
 
 const useTestnet = false;
 
@@ -280,7 +282,7 @@ const SYMBOLS = [
 const ALL_SYMBOLS = SYMBOLS.concat(
   EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
 );
-console.log(ALL_SYMBOLS);
+
 if (startDate === undefined || endDate === undefined) {
   startDate = new Date();
   startDate.setDate(startDate.getDate() - DAY_LENGTH);
