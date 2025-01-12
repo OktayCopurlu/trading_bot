@@ -420,7 +420,7 @@ app.get("/", async (req, res) => {
       <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
         <thead>
           <tr style="background-color: #f2f2f2;">
-            <th>Symbol</th>
+            <th>Symbol (${results.length})</th>
             <th>Total Positions</th>
             <th>Total Investment (USDT)</th>
             <th>Total Fee (USDT)</th>
