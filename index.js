@@ -172,9 +172,7 @@ async function placeOrder(signal) {
       if (response.retCode !== 0) {
         return `Order rejected: ${response.retMsg}`;
       } else {
-        if (!ALL_SYMBOLS.includes(signal.symbol)) {
-          addSymbolToJson(signal.symbol);
-        }
+        addSymbolToJson(signal.symbol);
         console.log(
           `Order placed: ${signal.symbol} ${side}, Quantity: ${calculatedQuantity}, Price: ${limitPrice}`
         );
@@ -371,6 +369,7 @@ async function fetchTradingDataWithTransactionLogs() {
 }
 
 app.get("/", async (req, res) => {
+  console.log("Fetching trading data...");
   try {
     const {
       results,
