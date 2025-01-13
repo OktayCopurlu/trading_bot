@@ -3,29 +3,30 @@ const express = require("express");
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-
-const totalMarginSize = process.env.TOTAL_MARGIN_SIZE;
-const targetLeverage = process.env.TARGET_LEVERAGE;
-const BYBIT_API_KEY = process.env.BYBIT_API_KEY;
-const BYBIT_API_SECRET = process.env.BYBIT_API_SECRET;
-const LONG_TAKE_PROFIT_1 = process.env.LONG_TAKE_PROFIT_PERCENT_1;
-const LONG_TAKE_PROFIT_2 = process.env.LONG_TAKE_PROFIT_PERCENT_2;
-const SHORT_TAKE_PROFIT_1 = process.env.SHORT_TAKE_PROFIT_PERCENT_1;
-const SHORT_TAKE_PROFIT_2 = process.env.SHORT_TAKE_PROFIT_PERCENT_2;
-const LONG_STOP_LOSS = process.env.LONG_STOP_LOSS_PERCENT;
-const SHORT_STOP_LOSS = process.env.SHORT_STOP_LOSS_PERCENT;
-const TAKE_PROFIT_QUANTITY = process.env.TAKE_PROFIT_QUANTITY;
-const TAKER_FEE_RATE = process.env.TAKER_FEE_RATE;
-const MAKER_FEE_RATE = process.env.MAKER_FEE_RATE;
-const RESULT_NUMBER = process.env.RESULT_NUMBER;
-const DAY_LENGTH = process.env.DAY_LENGTH;
-const EXTRA_SYMBOLS = process.env.EXTRA_SYMBOLS;
-let startDate = new Date(process.env.START_DATE);
-let endDate = process.env.END_DATE
-  ? new Date(process.env.END_DATE)
-  : new Date();
-
-const useTestnet = false;
+const generateHtmlTable = require("./generateHtmlTable");
+const updateSymbolsInfo = require("./updateSymbolsInfo");
+const parseSignal = require("./parseSignal");
+const {
+  totalMarginSize,
+  targetLeverage,
+  BYBIT_API_KEY,
+  BYBIT_API_SECRET,
+  LONG_TAKE_PROFIT_1,
+  LONG_TAKE_PROFIT_2,
+  SHORT_TAKE_PROFIT_1,
+  SHORT_TAKE_PROFIT_2,
+  LONG_STOP_LOSS,
+  SHORT_STOP_LOSS,
+  TAKE_PROFIT_QUANTITY,
+  TAKER_FEE_RATE,
+  MAKER_FEE_RATE,
+  RESULT_NUMBER,
+  DAY_LENGTH,
+  EXTRA_SYMBOLS,
+  startDate,
+  endDate,
+  useTestnet,
+} = require("./constants");
 
 // Bybit client
 const bybitClient = new RestClientV5({
@@ -41,51 +42,14 @@ app.use(express.json());
 // Read symbols from JSON file
 const symbolsFilePath = path.join(__dirname, "symbols.json");
 let symbolsData = JSON.parse(fs.readFileSync(symbolsFilePath, "utf8"));
-const SYMBOLS = symbolsData.symbols;
-
-// Function to add a new symbol to the JSON file
-function addSymbolToJson(symbol) {
-  if (!SYMBOLS.includes(symbol)) {
-    SYMBOLS.push(symbol);
-    symbolsData.symbols = SYMBOLS;
-    fs.writeFileSync(
-      symbolsFilePath,
-      JSON.stringify(symbolsData, null, 2),
-      "utf8"
-    );
-    console.log(`Added new symbol: ${symbol}`);
-  }
-}
-
-// Function to parse incoming webhook messages
-function parseSignal(jsonSignal) {
-  try {
-    const { symbol, price, signal } = jsonSignal;
-    let newSymbol = symbol;
-    if (!signal) {
-      console.log("No actionable signal found");
-      return null;
-    }
-    // Remove .P suffix if it exists
-    if (symbol.includes(".P")) {
-      newSymbol = symbol.replace(".P", "").trim();
-    }
-
-    return {
-      symbol: newSymbol,
-      signal,
-      entry: parseFloat(price),
-    };
-  } catch (err) {
-    return `Error parsing signal: ${err}`;
-  }
-}
+let SYMBOLS_DATA = symbolsData.symbols;
+let SYMBOL_LIST = symbolsData.symbols.map((s) => s.symbol);
 
 async function placeOrder(signal) {
   try {
     const side = signal.signal;
 
-    // Fetch market price and instrument details
+    // Fetch market price
     const marketPriceData = await bybitClient.getTickers({
       category: "linear",
       symbol: signal.symbol,
@@ -96,33 +60,49 @@ async function placeOrder(signal) {
     }
 
     const symbolPrice = parseFloat(marketPriceData.result.list[0].lastPrice);
-    const instrumentDetails = await bybitClient.getInstrumentsInfo({
-      category: "linear",
-      symbol: signal.symbol,
-    });
 
-    if (instrumentDetails.retCode !== 0) {
-      return `Failed to get Instruments Info : ${instrumentDetails.retMsg}`;
+    // Get qtyPrecision and tickSize from symbols.json
+    let symbolData = SYMBOLS_DATA.find((s) => s.symbol === signal.symbol);
+    if (!symbolData) {
+      // If data not found in JSON, fetch from API
+      const instrumentDetails = await bybitClient.getInstrumentsInfo({
+        category: "linear",
+        symbol: signal.symbol,
+      });
+
+      if (instrumentDetails.retCode !== 0) {
+        return `Failed to get Instruments Info : ${instrumentDetails.retMsg}`;
+      }
+
+      const instrument = instrumentDetails.result.list[0];
+      const qtyPrecision = parseInt(
+        instrument.lotSizeFilter.qtyStep.split(".")[1]?.length || 0
+      );
+      const tickSize = parseFloat(instrument.priceFilter.tickSize);
+
+      // Update symbol data
+      symbolData = { symbol: signal.symbol, qtyPrecision, tickSize };
+      SYMBOLS_DATA.push(symbolData);
+      symbolsData.symbols = SYMBOLS_DATA;
+      fs.writeFileSync(
+        symbolsFilePath,
+        JSON.stringify(symbolsData, null, 2),
+        "utf8"
+      );
+      console.log(`Added new symbol data: ${signal.symbol}`);
     }
 
-    const instrument = instrumentDetails.result.list[0];
-    const minQty = parseFloat(instrument.lotSizeFilter.minOrderQty);
-    const qtyPrecision = parseInt(
-      instrument.lotSizeFilter.qtyStep.split(".")[1]?.length || 0
-    );
-    const tickSize = parseFloat(instrument.priceFilter.tickSize);
+    const { qtyPrecision, tickSize } = symbolData;
 
     // Calculate the correct quantity for the target leverage
     const targetNotional = totalMarginSize * targetLeverage;
     let calculatedQuantity = (targetNotional / symbolPrice).toFixed(
       qtyPrecision
     );
-    calculatedQuantity = Math.max(calculatedQuantity, minQty).toFixed(
-      qtyPrecision
-    );
+    calculatedQuantity = Math.max(calculatedQuantity, 1).toFixed(qtyPrecision);
 
     // Calculate limit price
-    const priceOffset = tickSize * 5;
+    const priceOffset = parseFloat(tickSize) * 5;
     const limitPrice =
       side === "Buy"
         ? (symbolPrice - priceOffset).toFixed(4)
@@ -255,8 +235,8 @@ async function placeOrder(signal) {
 }
 
 // const signal = parseSignal({
-//   symbol: "XRPUSDT",
-//   price: "2.41",
+//   symbol: "ENAUSDT",
+//   price: "2.49",
 //   signal: "Sell",
 // });
 
@@ -270,9 +250,9 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-const ALL_SYMBOLS = SYMBOLS.concat(
-  EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
-);
+// const ALL_SYMBOLS = SYMBOL_LIST.concat(
+//   EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
+// );
 
 if (startDate === undefined || endDate === undefined) {
   startDate = new Date();
@@ -280,176 +260,17 @@ if (startDate === undefined || endDate === undefined) {
   endDate = new Date();
 }
 
-async function fetchTradingDataWithTransactionLogs() {
-  const results = [];
-  let totalClosedPositions = 0;
-  let totalPnL = 0;
-  let totalFee = 0;
-  let totalInvestment = 0;
-  let totalInvestmentWithLeverage = 0;
-
-  for (const symbol of ALL_SYMBOLS) {
-    try {
-      // Kapalı pozisyonları al
-      const response = await bybitClient.getClosedPnL({
-        category: "linear",
-        symbol,
-        limit: RESULT_NUMBER,
-      });
-
-      if (!response || !response.result || !response.result.list) {
-        console.log(`No data returned for ${symbol}`);
-        continue;
-      }
-
-      const closedPnLData = response.result.list.filter((pos) => {
-        const closedTime = new Date(parseInt(pos.updatedTime));
-        return closedTime >= startDate && closedTime <= endDate;
-      });
-      const totalPositions = closedPnLData.length;
-      const symbolTotalPnL = closedPnLData.reduce(
-        (sum, pos) => sum + parseFloat(pos.closedPnl),
-        0
-      );
-
-      // Fee Hesaplama
-      const symbolTotalFee = closedPnLData.reduce((sum, pos) => {
-        const feeRate =
-          pos.orderType === "Market" ? TAKER_FEE_RATE : MAKER_FEE_RATE;
-        const openingFee =
-          parseFloat(pos.avgEntryPrice) * parseFloat(pos.qty) * feeRate;
-        const closingFee =
-          parseFloat(pos.avgExitPrice) * parseFloat(pos.qty) * feeRate;
-        return sum + openingFee + closingFee;
-      }, 0);
-
-      // Total Investment Hesaplama
-      const symbolTotalInvestment = closedPnLData.reduce((sum, pos) => {
-        const leverage = parseFloat(pos.leverage);
-        const initialInvestment = parseFloat(pos.cumEntryValue) / leverage;
-        return sum + initialInvestment;
-      }, 0);
-
-      const symbolTotalInvestmentWithLeverage = closedPnLData.reduce(
-        (sum, pos) => {
-          const initialInvestment = parseFloat(pos.cumEntryValue);
-          return sum + initialInvestment;
-        },
-        0
-      );
-
-      results.push({
-        symbol,
-        totalPositions,
-        totalPnL: symbolTotalPnL.toFixed(2),
-        totalFee: symbolTotalFee.toFixed(2),
-        totalInvestment: symbolTotalInvestment.toFixed(2),
-        totalInvestmentWithLeverage:
-          symbolTotalInvestmentWithLeverage.toFixed(2),
-      });
-
-      totalClosedPositions += totalPositions;
-      totalPnL += symbolTotalPnL;
-      totalFee += symbolTotalFee;
-      totalInvestment += symbolTotalInvestment;
-      totalInvestmentWithLeverage += symbolTotalInvestmentWithLeverage;
-    } catch (error) {
-      console.error(`Error fetching data for ${symbol}:`, error.message);
-    }
-  }
-
-  return {
-    results,
-    totalClosedPositions,
-    totalPnL: totalPnL.toFixed(2),
-    totalFee: totalFee.toFixed(2),
-    totalInvestment: totalInvestment.toFixed(0),
-    totalInvestmentWithLeverage: totalInvestmentWithLeverage.toFixed(0),
-  };
-}
-
 app.get("/", async (req, res) => {
-  console.log("Fetching trading data...");
   try {
-    const {
-      results,
-      totalClosedPositions,
-      totalPnL,
-      totalFee,
-      totalInvestment,
-      totalInvestmentWithLeverage,
-    } = await fetchTradingDataWithTransactionLogs();
-
-    // PnL'leri büyükten küçüğe sırala
-    results.sort((a, b) => b.totalPnL - a.totalPnL);
-
-    const options = { day: "2-digit", month: "2-digit", year: "numeric" };
-    const formattedStartDate = startDate.toLocaleDateString("de-CH", options);
-    const formattedEndDate = endDate.toLocaleDateString("de-CH", options);
-    // Gün sayısını hesapla
-    const timeDifference = endDate.getTime() - startDate.getTime();
-    const dayDifference = Math.ceil(timeDifference / (1000 * 3600 * 24));
-
-    // HTML Tablosu oluştur
-    let html = `
-      <h1 style="text-align: center;">Trading Bot Last ${RESULT_NUMBER} PnL Results</h1>
-      <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
-        <thead>
-          <tr style="background-color: #f2f2f2;">
-            <th>Date Range</th>
-            <th>Number of Closed Positions</th>
-            <th>Total PnL (USDT)</th>
-            <th>Total Fee (USDT)</th>
-            <th>Total Investment (USDT)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>${formattedStartDate} - ${formattedEndDate} (${dayDifference} Days)</td>
-            <td>${totalClosedPositions}</td>
-            <td style="color: ${
-              totalPnL >= 0 ? "green" : "red"
-            };">${totalPnL} USDT</td>
-            <td>${totalFee} USDT</td>
-            <td>${totalInvestment} USDT</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <br>
-      <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; width: 80%; margin: auto; text-align: center;">
-        <thead>
-          <tr style="background-color: #f2f2f2;">
-            <th>Symbol (${results.length})</th>
-            <th>Total Positions</th>
-            <th>Total Investment (USDT)</th>
-            <th>Total Fee (USDT)</th>
-            <th>Total PnL (USDT)</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    results.forEach(
-      ({ symbol, totalPositions, totalInvestment, totalFee, totalPnL }) => {
-        html += `
-        <tr>
-          <td>${symbol}</td>
-          <td>${totalPositions}</td>
-          <td>${totalInvestment}</td>
-          <td>${totalFee}</td>
-          <td style="color: ${
-            totalPnL >= 0 ? "green" : "red"
-          };">${totalPnL}</td>
-        </tr>
-      `;
-      }
+    const html = await generateHtmlTable(
+      bybitClient,
+      SYMBOL_LIST,
+      startDate,
+      endDate,
+      TAKER_FEE_RATE,
+      MAKER_FEE_RATE,
+      RESULT_NUMBER
     );
-
-    html += `
-        </tbody>
-      </table>
-    `;
 
     res.status(200).send(html);
   } catch (error) {
@@ -469,78 +290,78 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// WebSocket client
-const wsClient = new WebsocketClient({
-  key: BYBIT_API_KEY,
-  secret: BYBIT_API_SECRET,
-  testnet: useTestnet,
-  market: "v5",
-  channel_type: "private",
-});
+// // WebSocket client
+// const wsClient = new WebsocketClient({
+//   key: BYBIT_API_KEY,
+//   secret: BYBIT_API_SECRET,
+//   testnet: useTestnet,
+//   market: "v5",
+//   channel_type: "private",
+// });
 
-wsClient.subscribeV5(["order"]);
+// wsClient.subscribeV5(["order"]);
 
-// Handle WebSocket messages
-wsClient.on("update", async (data) => {
-  if (data.topic === "order") {
-    for (let index = 0; index < data.data.length; index++) {
-      const orderData = data.data[index];
-      const orderStatus = orderData.orderStatus;
+// // Handle WebSocket messages
+// wsClient.on("update", async (data) => {
+//   if (data.topic === "order") {
+//     for (let index = 0; index < data.data.length; index++) {
+//       const orderData = data.data[index];
+//       const orderStatus = orderData.orderStatus;
 
-      if (
-        orderStatus === "Filled" &&
-        orderData.stopOrderType === "PartialTakeProfit"
-      ) {
-        console.log(`Take Profit order ${orderData.symbol} has been filled.`);
+//       if (
+//         orderStatus === "Filled" &&
+//         orderData.stopOrderType === "PartialTakeProfit"
+//       ) {
+//         console.log(`Take Profit order ${orderData.symbol} has been filled.`);
 
-        // Cancel existing Stop Loss order if any
-        const existingOrders = await bybitClient.getActiveOrders({
-          category: "linear",
-          symbol: orderData.symbol,
-        });
+//         // Cancel existing Stop Loss order if any
+//         const existingOrders = await bybitClient.getActiveOrders({
+//           category: "linear",
+//           symbol: orderData.symbol,
+//         });
 
-        for (const order of existingOrders.result.list) {
-          if (order.stopOrderType === "StopLoss") {
-            const cancelResponse = await bybitClient.cancelOrder({
-              category: "linear",
-              symbol: orderData.symbol,
-              orderId: order.orderId,
-            });
+//         for (const order of existingOrders.result.list) {
+//           if (order.stopOrderType === "StopLoss") {
+//             const cancelResponse = await bybitClient.cancelOrder({
+//               category: "linear",
+//               symbol: orderData.symbol,
+//               orderId: order.orderId,
+//             });
 
-            if (cancelResponse.retCode !== 0) {
-              console.error(
-                `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
-              );
-            } else {
-              console.log(
-                `Existing Stop Loss order ${order.orderId} cancelled.`
-              );
-            }
-          }
-        }
+//             if (cancelResponse.retCode !== 0) {
+//               console.error(
+//                 `Failed to cancel existing Stop Loss order: ${cancelResponse.retMsg}`
+//               );
+//             } else {
+//               console.log(
+//                 `Existing Stop Loss order ${order.orderId} cancelled.`
+//               );
+//             }
+//           }
+//         }
 
-        // Calculate Stop Loss price
-        const symbolPrice = orderData.avgPrice;
-        const side = orderData.side;
-        const stopLossPrice =
-          side === "Sell"
-            ? (symbolPrice * 0.981).toFixed(4)
-            : (symbolPrice * 1.019).toFixed(4);
+//         // Calculate Stop Loss price
+//         const symbolPrice = orderData.avgPrice;
+//         const side = orderData.side;
+//         const stopLossPrice =
+//           side === "Sell"
+//             ? (symbolPrice * 0.981).toFixed(4)
+//             : (symbolPrice * 1.019).toFixed(4);
 
-        // Create Stop Loss order
-        const stopLossResponse = await bybitClient.setTradingStop({
-          category: "linear",
-          symbol: orderData.symbol,
-          stopLoss: stopLossPrice,
-          slTriggerBy: "MarkPrice",
-        });
+//         // Create Stop Loss order
+//         const stopLossResponse = await bybitClient.setTradingStop({
+//           category: "linear",
+//           symbol: orderData.symbol,
+//           stopLoss: stopLossPrice,
+//           slTriggerBy: "MarkPrice",
+//         });
 
-        if (stopLossResponse.retCode !== 0) {
-          return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
-        } else {
-          return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
-        }
-      }
-    }
-  }
-});
+//         if (stopLossResponse.retCode !== 0) {
+//           return `Stop Loss rejected: ${stopLossResponse.retMsg}`;
+//         } else {
+//           return `Stop Loss set for ${orderData.symbol} at ${stopLossPrice}`;
+//         }
+//       }
+//     }
+//   }
+// });
