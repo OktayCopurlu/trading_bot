@@ -1,50 +1,239 @@
 {
   "symbols": [
-    "10000WHYUSDT",
-    "1000APUUSDT",
-    "1000PEPEUSDT",
-    "1CATUSDT",
-    "A8USDT",
-    "AERGOUSDT",
-    "AUCTIONUSDT",
-    "AVAILUSDT",
-    "BANUSDT",
-    "BATUSDT",
-    "BENDOGUSDT",
-    "BIOUSDT",
-    "CARVUSDT",
-    "CTKUSDT",
-    "CVXUSDT",
-    "EGLDUSDT",
-    "GLMUSDT",
-    "GMEUSDT",
-    "GRIFFAINUSDT",
-    "GTCUSDT",
-    "HBARUSDT",
-    "HIVEUSDT",
-    "HYPEUSDT",
-    "IDEXUSDT",
-    "IDUSDT",
-    "IOTXUSDT",
-    "KSMUSDT",
-    "LAIUSDT",
-    "LOOKSUSDT",
-    "MAXUSDT",
-    "MBLUSDT",
-    "ORBSUSDT",
-    "POWRUSDT",
-    "RENUSDT",
-    "SDUSDT",
-    "SILLYUSDT",
-    "STPTUSDT",
-    "SWEATUSDT",
-    "TAIKOUSDT",
-    "VELODROMEUSDT",
-    "VELOUSDT",
-    "VOXELUSDT",
-    "WAVESUSDT",
-    "WAXPUSDT",
-    "ZBCNUSDT",
-    "ZRCUSDT"
+    {
+      "symbol": "10000WHYUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "1000APUUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "1CATUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "A8USDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "AERGOUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "AUCTIONUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.001
+    },
+    {
+      "symbol": "AVAILUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "BANUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "BATUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "BENDOGUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "BIOUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "CARVUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "CTKUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "CVXUSDT",
+      "qtyPrecision": 2,
+      "tickSize": 0.001
+    },
+    {
+      "symbol": "EGLDUSDT",
+      "qtyPrecision": 2,
+      "tickSize": 0.01
+    },
+    {
+      "symbol": "GLMUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "GMEUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "GRIFFAINUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "GTCUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "HBARUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "HIVEUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "qtyPrecision": 2,
+      "tickSize": 0.001
+    },
+    {
+      "symbol": "IDEXUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "IDUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "IOTXUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "KSMUSDT",
+      "qtyPrecision": 2,
+      "tickSize": 0.01
+    },
+    {
+      "symbol": "LAIUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "LOOKSUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "MAXUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "MBLUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "ORBSUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "POWRUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "RENUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "SDUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "SILLYUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "STPTUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "SWEATUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "TAIKOUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "VELODROMEUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "VELOUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.000001
+    },
+    {
+      "symbol": "VOXELUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    },
+    {
+      "symbol": "WAVESUSDT",
+      "qtyPrecision": 1,
+      "tickSize": 0.0005
+    },
+    {
+      "symbol": "WAXPUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "ZBCNUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 1e-7
+    },
+    {
+      "symbol": "ZRCUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.00001
+    },
+    {
+      "symbol": "ENAUSDT",
+      "qtyPrecision": 0,
+      "tickSize": 0.0001
+    }
   ]
 }
