@@ -229,11 +229,6 @@
       "symbol": "ZRCUSDT",
       "qtyPrecision": 0,
       "tickSize": 0.00001
-    },
-    {
-      "symbol": "ENAUSDT",
-      "qtyPrecision": 0,
-      "tickSize": 0.0001
     }
   ]
 }
