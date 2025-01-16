@@ -1,3 +1,5 @@
+const { MANUAL_SELL, MANUAL_BUY } = require("./constants");
+
 function parseSignal(jsonSignal) {
   try {
     const { symbol, price, signal } = jsonSignal;
@@ -11,9 +13,18 @@ function parseSignal(jsonSignal) {
       newSymbol = symbol.replace(".P", "").trim();
     }
 
+    let side;
+    if (MANUAL_BUY === "Sell") {
+      side = "Sell";
+    } else if (MANUAL_SELL === "Buy") {
+      side = "Buy";
+    } else {
+      side = signal;
+    }
+
     return {
       symbol: newSymbol,
-      signal,
+      signal: side,
       entry: parseFloat(price),
     };
   } catch (err) {

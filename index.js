@@ -4,7 +4,6 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const generateHtmlTable = require("./generateHtmlTable");
-const updateSymbolsInfo = require("./updateSymbolsInfo");
 const parseSignal = require("./parseSignal");
 const {
   totalMarginSize,
@@ -22,7 +21,6 @@ const {
   MAKER_FEE_RATE,
   RESULT_NUMBER,
   DAY_LENGTH,
-  EXTRA_SYMBOLS,
   startDate,
   endDate,
   useTestnet,
@@ -235,7 +233,7 @@ async function placeOrder(signal) {
 }
 
 // const signal = parseSignal({
-//   symbol: "ENAUSDT",
+//   symbol: "XRPUSDT",
 //   price: "2.49",
 //   signal: "Sell",
 // });
@@ -249,10 +247,6 @@ const PORT = process.env.PORT || 3300;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-// const ALL_SYMBOLS = SYMBOL_LIST.concat(
-//   EXTRA_SYMBOLS ? EXTRA_SYMBOLS.split(",") : []
-// );
 
 if (startDate === undefined || endDate === undefined) {
   startDate = new Date();

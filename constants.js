@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const totalMarginSize = parseFloat(process.env.TOTAL_MARGIN_SIZE);
 const targetLeverage = parseFloat(process.env.TARGET_LEVERAGE);
+const MANUAL_BUY = process.env.MANUAL_BUY;
+const MANUAL_SELL = process.env.MANUAL_SELL;
 const BYBIT_API_KEY = process.env.BYBIT_API_KEY;
 const BYBIT_API_SECRET = process.env.BYBIT_API_SECRET;
 const LONG_TAKE_PROFIT_1 = parseFloat(process.env.LONG_TAKE_PROFIT_PERCENT_1);
@@ -45,4 +47,6 @@ module.exports = {
   startDate,
   endDate,
   useTestnet,
+  MANUAL_SELL,
+  MANUAL_BUY,
 };
