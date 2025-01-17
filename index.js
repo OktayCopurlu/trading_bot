@@ -43,7 +43,21 @@ let symbolsData = JSON.parse(fs.readFileSync(symbolsFilePath, "utf8"));
 let SYMBOLS_DATA = symbolsData.symbols;
 let SYMBOL_LIST = symbolsData.symbols.map((s) => s.symbol);
 
+function manageAllPositions(side) {
+  const testSymbols = ["XRPUSDT", "SUIUSDT"];
+  for (const symbol of testSymbols) {
+    const signal = parseSignal({
+      symbol: symbol,
+      signal: side,
+      price: "2",
+    });
+
+    placeOrder(signal);
+  }
+}
+
 async function placeOrder(signal) {
+  console.log(signal);
   try {
     const side = signal.signal;
 
@@ -282,6 +296,21 @@ app.post("/webhook", async (req, res) => {
   } else {
     res.status(400).send("Invalid signal received.");
   }
+});
+
+app.get("/buy", async (req, res) => {
+  manageAllPositions("Buy");
+  res.status(200).send("All positions turned to buy.");
+});
+
+app.get("/sell", async (req, res) => {
+  manageAllPositions("Sell");
+  res.status(200).send("All positions turned to sell.");
+});
+
+app.get("/close", async (req, res) => {
+  manageAllPositions("Close");
+  res.status(200).send("All positions closed.");
 });
 
 // // WebSocket client
