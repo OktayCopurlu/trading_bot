@@ -44,8 +44,7 @@ let SYMBOLS_DATA = symbolsData.symbols;
 let SYMBOL_LIST = symbolsData.symbols.map((s) => s.symbol);
 
 function manageAllPositions(side) {
-  const testSymbols = ["XRPUSDT", "SUIUSDT"];
-  for (const symbol of testSymbols) {
+  for (const symbol of SYMBOL_LIST) {
     const signal = parseSignal({
       symbol: symbol,
       signal: side,
