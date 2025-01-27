@@ -1,34 +1,36 @@
-const { MANUAL_SELL, MANUAL_BUY } = require("./constants");
+const parseSignal2 = require("./parseSignal2");
 
-function parseSignal(jsonSignal) {
+function parseSignal(message) {
   try {
-    const { symbol, price, signal } = jsonSignal;
-    let newSymbol = symbol;
-    if (!signal) {
-      console.log("No actionable signal found");
-      return null;
-    }
-    // Remove .P suffix if it exists
-    if (symbol.includes(".P")) {
-      newSymbol = symbol.replace(".P", "").trim();
-    }
+    const lines = message.trim().split("\n");
 
-    let side;
-    if (MANUAL_BUY === "Sell") {
-      side = "Sell";
-    } else if (MANUAL_SELL === "Buy") {
-      side = "Buy";
-    } else {
-      side = signal;
-    }
+    const symbolMatch = lines[0].match(/#(\w+\/\w+)/);
+    const sideMatch = lines[0].match(/\((Long|Short)/);
+    const entryMatch = lines[2].match(/Entry\s*-\s*([\d.]+)/);
+    const takeProfitMatches = lines
+      .slice(3)
+      .filter((line) => line.includes("of profit"))
+      .map((line) => {
+        const tpMatch = line.match(/([\d.]+)\s+\((\d+)%/);
+        return tpMatch ? { price: tpMatch[1], percentage: tpMatch[2] } : null;
+      });
 
+    const side = sideMatch ? sideMatch[1].toLowerCase() : null;
+    const orderSide = side === "long" ? "buy" : "sell";
+    const correctSymbol = symbolMatch ? symbolMatch[1].replace("/", "") : null;
+
+    if (correctSymbol === null) return parseSignal2(message);
+    if (takeProfitMatches.length === 0) return null;
     return {
-      symbol: newSymbol,
-      signal: side,
-      entry: parseFloat(price),
+      symbol: correctSymbol,
+      side,
+      orderSide: orderSide,
+      entry: entryMatch ? parseFloat(entryMatch[1]) : null,
+      takeProfits: takeProfitMatches.filter(Boolean),
     };
-  } catch (err) {
-    return `Error parsing signal: ${err}`;
+  } catch (error) {
+    console.error("Error parsing signal:", error);
+    return null;
   }
 }
 
