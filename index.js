@@ -56,7 +56,6 @@ function manageAllPositions(side) {
 }
 
 async function placeOrder(signal) {
-  console.log(signal);
   try {
     const side = signal.signal;
 
@@ -145,6 +144,9 @@ async function placeOrder(signal) {
           }
         }
       } else {
+        console.log(
+          `Open ${openPositionSide} position already exists for ${signal.symbol}`
+        );
         return `Open ${openPositionSide} position already exists for ${signal.symbol}`;
       }
     }
@@ -246,9 +248,9 @@ async function placeOrder(signal) {
 }
 
 // const signal = parseSignal({
-//   symbol: "XRPUSDT",
+//   symbol: "XCNUSDT",
 //   price: "2.49",
-//   signal: "Sell",
+//   signal: "Buy",
 // });
 
 // if (signal) {
